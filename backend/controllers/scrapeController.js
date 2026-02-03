@@ -2,11 +2,11 @@ const scrapeService = require('../services/scrapeService');
 
 exports.scrapeLeetCode = async (req, res) => {
   const { url } = req.body;
-  
+
   if (!url || !url.includes('leetcode.com/problems/')) {
     return res.status(400).json({ error: 'Invalid LeetCode problem URL' });
   }
-  
+
   try {
     const output = await scrapeService.scrapeAndFormat(url);
     res.type('text/plain').send(output);

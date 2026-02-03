@@ -2,11 +2,11 @@ const gfgService = require('../services/gfgService');
 
 exports.scrapeGFG = async (req, res) => {
   const { url } = req.body;
-  
+
   if (!url || !url.includes('geeksforgeeks.org/problems/')) {
     return res.status(400).json({ error: 'Invalid GeeksforGeeks problem URL' });
   }
-  
+
   try {
     const output = await gfgService.scrapeAndFormat(url);
     res.type('text/plain').send(output);
