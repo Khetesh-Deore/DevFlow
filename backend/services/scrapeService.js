@@ -59,6 +59,17 @@ const extractData = async (driver) => {
   throw new Error('Failed to extract problem data');
 };
 
+const decodeHtmlEntities = (text) => {
+  return text
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'");
+};
+
 const formatOutput = (data) => {
   const lines = [];
   
@@ -86,18 +97,18 @@ const formatOutput = (data) => {
   }
   
   lines.push('\nProblem Statement:');
-  lines.push(data.content.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').trim());
+  lines.push(decodeHtmlEntities(data.content.replace(/<[^>]*>/g, '').trim()));
   
   if (data.exampleTestcases) {
     lines.push('\nExamples:');
-    lines.push(data.exampleTestcases);
+    lines.push(decodeHtmlEntities(data.exampleTestcases));
   }
   
   lines.push('\nConstraints:');
   const constraintMatch = data.content.match(/<strong[^>]*>Constraints:<\/strong>(.*?)(?=<p><strong|$)/is);
   if (constraintMatch) {
-    const constraints = constraintMatch[1].replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').trim();
-    lines.push(constraints);
+    const constraints = constraintMatch[1].replace(/<[^>]*>/g, '').trim();
+    lines.push(decodeHtmlEntities(constraints));
   }
   
   return lines.join('\n');

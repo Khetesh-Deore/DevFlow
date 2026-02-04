@@ -1,0 +1,5 @@
+{
+  "url": "https://leetcode.com/problems/zigzag-conversion/description/",
+  "code": "#include <iostream>\\n#include <string>\\nusing namespace std;\\n\\nstring convert(string s, int numRows) {\\n    if (numRows == 1) return s;\\n    \\n    string result = \\\"\\\";\\n    int n = s.length();\\n    int cycleLen = 2 * numRows - 2;\\n    \\n    for (int i = 0; i < numRows; i++) {\\n        for (int j = 0; j + i < n; j += cycleLen) {\\n            result += s[j + i];\\n            if (i != 0 && i != numRows - 1 && j + cycleLen - i < n) {\\n                result += s[j + cycleLen - i];\\n            }\\n        }\\n    }\\n    return result;\\n}\\n\\nint main() {\\n    string s;\\n    int numRows;\\n    cin >> s >> numRows;\\n    cout << convert(s, numRows);\\n    return 0;\\n}",
+  "language": "cpp"
+}

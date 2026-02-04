@@ -1,6 +1,17 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const axios = require('axios');
 
+const decodeHtmlEntities = (text) => {
+  return text
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'");
+};
+
 const extractSampleTestCases = (problemData) => {
   const testCases = [];
   
@@ -22,6 +33,9 @@ const extractSampleTestCases = (problemData) => {
         output = output.split('\n')[0].trim();
         
         output = output.replace(/Explanation:.*/gi, '').trim();
+        
+        input = decodeHtmlEntities(input);
+        output = decodeHtmlEntities(output);
         
         if (input && output) {
           testCases.push({
