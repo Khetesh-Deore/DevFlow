@@ -1,0 +1,16 @@
+import sys
+import json
+
+{{USER_CODE}}
+
+if __name__ == "__main__":
+    for line in sys.stdin:
+        line = line.strip()
+        if not line:
+            continue
+        
+        {{INPUT_PARSER}}
+        
+        {{FUNCTION_CALL}}
+        
+        {{OUTPUT_FORMATTER}}

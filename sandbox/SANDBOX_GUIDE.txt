@@ -1,0 +1,212 @@
+DevFlow Sandbox System - Implementation Guide
+==============================================
+
+OVERVIEW
+--------
+A contest-grade, language-agnostic code execution sandbox that safely executes user code
+against test cases with proper isolation, resource limits, and security controls.
+
+ARCHITECTURE
+------------
+1. Backend API (Express) - Receives problem submissions
+2. Sandbox Service - Isolated execution environment (Docker)
+3. Language Templates - Wrapper system for function/program modes
+4. Validation Layer - Security and constraint checking
+
+DEPLOYMENT OPTIONS
+------------------
+
+Option 1: Local Development (No Docker)
+- Backend runs on port 5000
+- Sandbox runs on port 3001
+- Direct process execution with basic limits
+
+Option 2: Docker Isolated (Recommended for Production)
+- Backend on Render/Railway
+- Sandbox in Docker container
+- Full isolation with resource limits
+- Network restrictions
+
+SETUP INSTRUCTIONS
+------------------
+
+1. Install Dependencies:
+   cd sandbox
+   npm install
+
+2. Start Sandbox Server (Local):
+   npm start
+
+3. Start Sandbox Server (Docker):
+   npm run docker:build
+   npm run docker:up
+
+4. Configure Backend:
+   Add to backend/.env:
+   SANDBOX_URL=http://localhost:3001
+
+5. Test Health:
+   curl http://localhost:3001/health
+
+API CONTRACT
+------------
+
+Endpoint: POST /run
+
+Request Body:
+{
+  "language": "cpp|c|java|python|javascript",
+  "code_type": "full_program|function",
+  "code": "user code here",
+  "testcases": [
+    {
+      "input": "test input",
+      "expected_output": "expected output"
+    }
+  ],
+  "constraints": {
+    "time_limit_ms": 5000,
+    "memory_mb": 256
+  }
+}
+
+Response:
+{
+  "status": "AC|WA|TLE|RE|CE",
+  "passed": 3,
+  "total": 5,
+  "runtime_ms": 120,
+  "details": [
+    {
+      "testcase": 1,
+      "status": "AC",
+      "passed": true,
+      "time": 45,
+      "stdout": "output",
+      "stderr": "",
+      "message": "Accepted"
+    }
+  ]
+}
+
+VERDICT CODES
+-------------
+AC  - Accepted (all test cases passed)
+WA  - Wrong Answer
+TLE - Time Limit Exceeded
+RE  - Runtime Error
+CE  - Compilation Error
+
+SECURITY FEATURES
+-----------------
+1. Forbidden keyword detection
+2. Code size limits (50KB)
+3. Test case count limits (100 max)
+4. Time limits (10s max)
+5. Memory limits (512MB max)
+6. Process isolation (Docker)
+7. No network access
+8. Read-only filesystem (except temp)
+9. Resource quotas (CPU, memory, PIDs)
+
+LANGUAGE SUPPORT
+----------------
+C++        - g++ with C++17
+C          - gcc with C11
+Java       - OpenJDK 17
+Python     - Python 3
+JavaScript - Node.js
+
+EXECUTION MODES
+---------------
+
+1. Full Program Mode (default):
+   - User provides complete program
+   - Reads from stdin, writes to stdout
+   - Direct execution
+
+2. Function Mode (future):
+   - User provides only function
+   - Wrapped with template
+   - Input parsing and output formatting handled
+
+WORKFLOW
+--------
+1. Validate request (language, code size, constraints)
+2. Check for forbidden keywords
+3. Write code to temp file
+4. Compile (if needed)
+5. Execute against each test case
+6. Compare outputs (normalized)
+7. Return verdict and metrics
+8. Cleanup temp files
+
+DOCKER SECURITY
+---------------
+- Non-root user (sandbox:1000)
+- Dropped capabilities
+- No new privileges
+- Memory limit: 512MB
+- CPU limit: 1 core
+- PID limit: 50 processes
+- Tmpfs for /tmp (100MB, noexec)
+- Read-only templates
+
+SCALING CONSIDERATIONS
+----------------------
+Future enhancements:
+- Job queue (Bull/Redis)
+- Multiple sandbox workers
+- Load balancing
+- Language-specific pools
+- Caching compiled code
+- Batch execution optimization
+
+TROUBLESHOOTING
+---------------
+
+Sandbox not responding:
+- Check if sandbox server is running
+- Verify SANDBOX_URL in backend/.env
+- Check Docker container status: docker ps
+- View logs: npm run docker:logs
+
+Compilation errors:
+- Ensure compilers installed (g++, gcc, javac)
+- Check language version compatibility
+- Review stderr in response
+
+Timeout issues:
+- Adjust time_limit_ms in constraints
+- Check for infinite loops
+- Monitor system resources
+
+TESTING
+-------
+
+Test with curl:
+curl -X POST http://localhost:3001/run \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "python",
+    "code": "print(input())",
+    "testcases": [
+      {"input": "hello", "expected_output": "hello"}
+    ]
+  }'
+
+PRODUCTION DEPLOYMENT
+---------------------
+
+1. Deploy backend to Render/Railway
+2. Deploy sandbox as Docker container
+3. Set SANDBOX_URL environment variable
+4. Configure firewall (only backend can access sandbox)
+5. Enable monitoring and logging
+6. Set up auto-restart policies
+
+GOLDEN RULE
+-----------
+Backend decides WHAT to run
+Sandbox decides HOW to run
+User decides NOTHING except logic

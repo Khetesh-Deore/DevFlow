@@ -1,0 +1,23 @@
+import java.util.*;
+import java.io.*;
+
+public class Solution {
+    {{USER_CODE}}
+    
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        Solution solution = new Solution();
+        
+        while (sc.hasNextLine()) {
+            String line = sc.nextLine();
+            if (line.isEmpty()) continue;
+            
+            {{INPUT_PARSER}}
+            
+            {{FUNCTION_CALL}}
+            
+            {{OUTPUT_FORMATTER}}
+        }
+        sc.close();
+    }
+}

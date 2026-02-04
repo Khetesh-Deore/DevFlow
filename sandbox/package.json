@@ -1,0 +1,27 @@
+{
+  "name": "devflow-sandbox",
+  "version": "1.0.0",
+  "description": "Isolated code execution sandbox for DevFlow",
+  "main": "sandboxServer.js",
+  "scripts": {
+    "start": "node sandboxServer.js",
+    "dev": "nodemon sandboxServer.js",
+    "test": "node test-sandbox.js",
+    "setup": "bash setup.sh",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f"
+  },
+  "keywords": ["sandbox", "code-execution", "docker"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "uuid": "^9.0.1",
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}

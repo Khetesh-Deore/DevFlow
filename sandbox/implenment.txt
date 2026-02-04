@@ -1,0 +1,317 @@
+Perfect — this is **exactly the right level** to design a real contest-grade sandbox 👍
+I’ll keep this **100% conceptual + flow + prompts**, **no code**, clean and runnable in your head.
+
+---
+
+## 0️⃣ What you are building (one-line clarity)
+
+> A **language-agnostic code execution sandbox** that receives **partial or full user code**, wraps it into a runnable program, executes it against **N testcases**, and returns **verdict + metrics** — safely and dynamically.
+
+---
+
+## 1️⃣ System Boundary (VERY IMPORTANT)
+
+![Image](https://res.cloudinary.com/dohtidfqh/image/upload/v1594706130/web-guiguio/designing-online-judge.png)
+
+![Image](https://agents-download.skywork.ai/image/rt/485f318d75d4523084eaa2d0f65de958.jpg)
+
+![Image](https://miro.medium.com/1%2A3L5k5uk1QSpJV62RFSgaGg.png)
+
+### Deployment split
+
+* **Frontend** → Vercel
+* **Backend + Sandbox API** → Render
+* **Isolation layer** → Docker
+
+⚠️ Sandbox **never** runs on Vercel
+⚠️ Backend **never** executes user code directly
+
+---
+
+## 2️⃣ API Contract (Mental Model)
+
+### Endpoint
+
+```
+POST /api/run
+```
+
+### Payload (conceptual)
+
+```json
+{
+  "language": "cpp",
+  "code_type": "function | full_program",
+  "code": "...",
+  "testcases": [
+    {
+      "input": "...",
+      "expected_output": "..."
+    }
+  ],
+  "constraints": {
+    "time_limit_ms": 1000,
+    "memory_mb": 256
+  }
+}
+```
+
+This API **does not care about the problem**
+It only cares about **execution correctness**
+
+---
+
+## 3️⃣ Core Sandbox Pipeline (Step-by-Step)
+
+### 🧠 High-level stages
+
+```
+Validate → Prepare → Wrap → Execute → Judge → Respond → Destroy
+```
+
+Let’s go deep.
+
+---
+
+## 4️⃣ Step 1: Request Validation Layer
+
+### What you validate (before sandbox)
+
+* Language is supported (c, cpp, java, python, js)
+* Code size limit
+* Testcase count limit
+* Time/memory bounds sane
+* No forbidden keywords (basic static filtering)
+
+👉 If invalid → reject **before sandbox**
+
+---
+
+## 5️⃣ Step 2: Execution Strategy Decision
+
+You must decide **how to run** the code.
+
+### Two execution modes
+
+| Mode              | When used                                     |
+| ----------------- | --------------------------------------------- |
+| **Function Mode** | LeetCode-style input (only function provided) |
+| **Program Mode**  | Full program (stdin → stdout)                 |
+
+Your example:
+
+```cpp
+vector<int> twoSum(...)
+```
+
+➡️ **Function Mode**
+
+---
+
+## 6️⃣ Step 3: Language-Specific Wrapper Strategy (KEY IDEA)
+
+![Image](https://miro.medium.com/0%2Aa14RTmrxv2l8CSDO.png)
+
+![Image](https://ars.els-cdn.com/content/image/3-s2.0-B9780123914903000072-f07-02-9780123914903.jpg)
+
+### Core concept
+
+> **User never runs directly**
+> Sandbox always runs **your generated runner**
+
+---
+
+### Internal Template System (conceptual)
+
+For **each language**, you maintain:
+
+* Header template
+* Input parser template
+* Function injection point
+* Output formatter
+* Main runner logic
+
+📁 Think of it as:
+
+```
+/templates
+ ├── cpp/function_runner.txt
+ ├── java/function_runner.txt
+ ├── python/function_runner.txt
+ ├── js/function_runner.txt
+```
+
+---
+
+## 7️⃣ Step 4: Code Wrapping Logic (Function Mode)
+
+### Conceptual flow
+
+1. Take user function
+2. Inject into predefined runner template
+3. Runner:
+
+   * Reads input
+   * Calls function
+   * Prints output in canonical format
+
+💡 **User cannot override `main` in function mode**
+
+---
+
+### Example (Conceptual C++ Flow)
+
+```
+[ Includes ]
+[ using namespace std ]
+
+[ USER FUNCTION ]
+
+int main() {
+  read input
+  call user function
+  print output
+}
+```
+
+Same philosophy for:
+
+* Java → `public static void main`
+* Python → `if __name__ == "__main__"`
+* JS → Node.js wrapper
+
+---
+
+## 8️⃣ Step 5: Testcase Execution Model
+
+### Two valid models
+
+#### ✅ Model A: Per-testcase execution (safe)
+
+* One execution per testcase
+* Easier isolation
+* Slightly slower
+
+#### ✅ Model B: Batch execution (faster)
+
+* All testcases in one run
+* Runner loops internally
+
+👉 **For contests: start with Model A**
+
+---
+
+### Verdict logic per testcase
+
+* Runtime error
+* Time limit exceeded
+* Wrong answer
+* Accepted
+
+Stop early if:
+
+* RE or TLE occurs
+
+---
+
+## 9️⃣ Step 6: Sandbox Execution Rules (NON-NEGOTIABLE)
+
+Inside Docker container:
+
+* ⏱ Hard time limit
+* 🧠 Memory limit
+* 📂 Read-only filesystem
+* 🌐 No network
+* 🔥 Auto-kill on overuse
+* 🧹 Container destroyed after run
+
+This is what makes it a **real sandbox**
+
+---
+
+## 10️⃣ Step 7: Output Normalization & Judging
+
+Before comparing outputs:
+
+* Trim whitespace
+* Normalize newlines
+* Language-independent formatting
+
+Comparison types:
+
+* Exact match
+* Float tolerance (future)
+* Custom checker (advanced)
+
+---
+
+## 11️⃣ Step 8: Final Response Structure
+
+### Sandbox response (conceptual)
+
+```json
+{
+  "status": "AC | WA | TLE | RE | CE",
+  "passed": 3,
+  "total": 5,
+  "runtime_ms": 120,
+  "memory_mb": 18,
+  "error": null,
+  "details": [
+    {
+      "testcase": 1,
+      "status": "AC"
+    }
+  ]
+}
+```
+
+Backend forwards this to frontend.
+
+---
+
+## 12️⃣ Multi-Language Support Strategy
+
+| Language   | Execution Style   |
+| ---------- | ----------------- |
+| C          | compile → run     |
+| C++        | compile → run     |
+| Java       | compile → JVM run |
+| Python     | interpreted       |
+| JavaScript | Node.js           |
+
+Each language = **different runner template**,
+but **same judging logic**
+
+---
+
+## 13️⃣ How This Scales (Later)
+
+![Image](https://miro.medium.com/v2/resize%3Afit%3A1200/1%2A3L5k5uk1QSpJV62RFSgaGg.png)
+
+![Image](https://miro.medium.com/1%2Afx1xvD2LF7bwc5qSaRn4yw.png)
+
+Future upgrades:
+
+* Job queue
+* Multiple sandbox workers
+* Contest load balancing
+* Language-specific pools
+
+---
+
+## 14️⃣ Mental Checklist (Before You Implement)
+
+✅ API contract frozen
+✅ Function vs Program mode clear
+✅ Templates per language designed
+✅ Docker isolation ready
+✅ Verdict rules defined
+
+---
+
+## 15️⃣ One Golden Rule (Remember This)
+
+> **Backend decides WHAT to run. Sandbox decides HOW to run. User decides NOTHING except logic.**
+
+---

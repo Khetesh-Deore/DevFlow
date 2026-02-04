@@ -1,0 +1,71 @@
+How to Restart the Sandbox Server
+===================================
+
+PROBLEM: Code changes not taking effect
+REASON: The server is still running with old code
+SOLUTION: Restart the server
+
+WINDOWS (PowerShell)
+--------------------
+
+Step 1: Find the running Node process
+Get-Process -Name node
+
+Step 2: Stop the sandbox server
+- Press Ctrl+C in the terminal where sandbox is running
+- OR kill the process:
+  Stop-Process -Name node -Force
+
+Step 3: Start the server again
+npm start
+
+QUICK METHOD (Windows)
+----------------------
+1. Go to the terminal running the sandbox
+2. Press Ctrl+C
+3. Run: npm start
+
+LINUX/MAC
+---------
+
+Step 1: Find the process
+ps aux | grep sandboxServer
+
+Step 2: Kill it
+pkill -f sandboxServer
+# OR
+kill -9 <PID>
+
+Step 3: Start again
+npm start
+
+VERIFY IT WORKED
+----------------
+
+Test the health endpoint:
+curl http://localhost:3001/health
+
+Run tests:
+npm test
+
+COMMON ISSUES
+-------------
+
+Port already in use:
+- Kill all node processes: taskkill /F /IM node.exe (Windows)
+- Or change port in sandboxServer.js
+
+Changes still not working:
+- Make sure you're editing the right file
+- Check for syntax errors: node sandboxServer.js
+- Clear node cache: npm cache clean --force
+
+DEVELOPMENT TIP
+---------------
+
+Use nodemon for auto-restart on file changes:
+
+1. Install: npm install -g nodemon
+2. Run: nodemon sandboxServer.js
+
+This will automatically restart when you save changes!

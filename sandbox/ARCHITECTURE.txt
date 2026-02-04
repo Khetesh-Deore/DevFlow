@@ -1,0 +1,335 @@
+DevFlow Sandbox - System Architecture
+======================================
+
+HIGH-LEVEL ARCHITECTURE
+-----------------------
+
+┌─────────────┐
+│   Frontend  │ (Future - Vercel)
+│   (React)   │
+└──────┬──────┘
+       │ HTTP
+       ▼
+┌─────────────────────────────────────────────────┐
+│           Backend API (Express)                 │
+│           Port: 5000                            │
+│  ┌──────────────────────────────────────────┐  │
+│  │  Routes                                   │  │
+│  │  - /api/problems/*                        │  │
+│  │  - /api/sandbox/run                       │  │
+│  │  - /api/leetcode/scrape                   │  │
+│  ├──────────────────────────────────────────┤  │
+│  │  Controllers                              │  │
+│  │  - problemController                      │  │
+│  │  - scrapeController                       │  │
+│  ├──────────────────────────────────────────┤  │
+│  │  Services                                 │  │
+│  │  - sandboxClientService ◄─────────┐      │  │
+│  │  - localExecutorService (fallback)│      │  │
+│  │  - testCaseGeneratorService       │      │  │
+│  │  - scrapeService                  │      │  │
+│  └───────────────────────────────────┼──────┘  │
+└────────────────────────────────────┬─┼──────────┘
+                                     │ │
+                    ┌────────────────┘ │
+                    │                  │
+                    ▼                  │ HTTP
+            ┌──────────────┐           │
+            │   MongoDB    │           │
+            │   Database   │           │
+            └──────────────┘           │
+                                       │
+                                       ▼
+        ┌──────────────────────────────────────────┐
+        │     Sandbox Server (Isolated)            │
+        │     Port: 3001                           │
+        │  ┌────────────────────────────────────┐  │
+        │  │  Validation Layer                  │  │
+        │  │  - Language check                  │  │
+        │  │  - Code size limit                 │  │
+        │  │  - Forbidden keywords              │  │
+        │  │  - Constraint validation           │  │
+        │  └────────────────────────────────────┘  │
+        │  ┌────────────────────────────────────┐  │
+        │  │  Execution Pipeline                │  │
+        │  │  1. Write code to temp file        │  │
+        │  │  2. Compile (if needed)            │  │
+        │  │  3. Execute per testcase           │  │
+        │  │  4. Compare outputs                │  │
+        │  │  5. Generate verdict               │  │
+        │  │  6. Cleanup files                  │  │
+        │  └────────────────────────────────────┘  │
+        │  ┌────────────────────────────────────┐  │
+        │  │  Language Executors                │  │
+        │  │  - C (gcc)                         │  │
+        │  │  - C++ (g++)                       │  │
+        │  │  - Java (javac + java)             │  │
+        │  │  - Python (python3)                │  │
+        │  │  - JavaScript (node)               │  │
+        │  └────────────────────────────────────┘  │
+        └──────────────────────────────────────────┘
+                         │
+                         │ (Optional)
+                         ▼
+        ┌──────────────────────────────────────────┐
+        │         Docker Container                 │
+        │  - Non-root user (sandbox:1000)          │
+        │  - Resource limits (CPU, Memory, PIDs)   │
+        │  - No network access                     │
+        │  - Read-only filesystem                  │
+        │  - Isolated temp directory               │
+        └──────────────────────────────────────────┘
+
+
+REQUEST FLOW
+------------
+
+1. User submits solution
+   POST /api/problems/:id/submit
+   {
+     "code": "...",
+     "language": "cpp",
+     "use_sandbox": true
+   }
+
+2. Backend validates and fetches problem
+   - Get problem from MongoDB
+   - Extract test cases
+   - Check sandbox health
+
+3. Backend sends to sandbox
+   POST http://localhost:3001/run
+   {
+     "language": "cpp",
+     "code": "...",
+     "testcases": [...],
+     "constraints": {...}
+   }
+
+4. Sandbox processes request
+   - Validate language and constraints
+   - Check forbidden keywords
+   - Write code to temp file
+   - Compile if needed
+   - Execute against each testcase
+   - Compare outputs
+   - Generate verdict
+
+5. Sandbox returns result
+   {
+     "status": "AC",
+     "passed": 3,
+     "total": 5,
+     "runtime_ms": 120,
+     "details": [...]
+   }
+
+6. Backend returns to user
+   - Format response
+   - Include verdict and metrics
+
+
+EXECUTION PIPELINE (DETAILED)
+------------------------------
+
+┌─────────────────────────────────────────────┐
+│ 1. VALIDATE                                 │
+│    - Language supported?                    │
+│    - Code size OK?                          │
+│    - Testcase count OK?                     │
+│    - Constraints valid?                     │
+│    - No forbidden keywords?                 │
+└────────────┬────────────────────────────────┘
+             │ ✓ Valid
+             ▼
+┌─────────────────────────────────────────────┐
+│ 2. PREPARE                                  │
+│    - Generate unique session ID             │
+│    - Determine file extension               │
+│    - Create temp file path                  │
+└────────────┬────────────────────────────────┘
+             │
+             ▼
+┌─────────────────────────────────────────────┐
+│ 3. WRAP (Future: Function Mode)             │
+│    - Full program: use as-is                │
+│    - Function: inject into template         │
+└────────────┬────────────────────────────────┘
+             │
+             ▼
+┌─────────────────────────────────────────────┐
+│ 4. COMPILE (if needed)                      │
+│    - C/C++: g++/gcc                         │
+│    - Java: javac                            │
+│    - Python/JS: skip                        │
+│    - Timeout: 10s                           │
+└────────────┬────────────────────────────────┘
+             │ ✓ Compiled or Interpreted
+             ▼
+┌─────────────────────────────────────────────┐
+│ 5. EXECUTE (per testcase)                   │
+│    - Start timer                            │
+│    - Run with input                         │
+│    - Capture stdout/stderr                  │
+│    - Enforce time limit                     │
+│    - Kill if timeout                        │
+└────────────┬────────────────────────────────┘
+             │
+             ▼
+┌─────────────────────────────────────────────┐
+│ 6. JUDGE                                    │
+│    - Normalize output (trim, newlines)      │
+│    - Compare with expected                  │
+│    - Determine verdict:                     │
+│      * AC if match                          │
+│      * WA if different                      │
+│      * TLE if timeout                       │
+│      * RE if error                          │
+└────────────┬────────────────────────────────┘
+             │
+             ▼
+┌─────────────────────────────────────────────┐
+│ 7. RESPOND                                  │
+│    - Aggregate results                      │
+│    - Calculate metrics                      │
+│    - Format response                        │
+└────────────┬────────────────────────────────┘
+             │
+             ▼
+┌─────────────────────────────────────────────┐
+│ 8. DESTROY                                  │
+│    - Delete source file                     │
+│    - Delete compiled binary                 │
+│    - Delete class files                     │
+└─────────────────────────────────────────────┘
+
+
+SECURITY LAYERS
+---------------
+
+Layer 1: Input Validation
+├─ Language whitelist
+├─ Code size limit (50KB)
+├─ Testcase count limit (100)
+├─ Time limit cap (10s)
+└─ Memory limit cap (512MB)
+
+Layer 2: Static Analysis
+├─ Forbidden keyword detection
+├─ Import restrictions
+├─ System call blocking
+└─ File operation blocking
+
+Layer 3: Runtime Isolation (Docker)
+├─ Non-root user execution
+├─ No network access
+├─ Read-only filesystem
+├─ Temp directory only writable
+├─ Process limits (50 PIDs)
+├─ Memory limits (512MB)
+└─ CPU limits (1 core)
+
+Layer 4: Resource Enforcement
+├─ Hard time limits (SIGKILL)
+├─ Memory monitoring
+├─ Process cleanup
+└─ Automatic file deletion
+
+
+DEPLOYMENT TOPOLOGY
+-------------------
+
+Development:
+┌──────────┐     ┌──────────┐
+│ Backend  │────▶│ Sandbox  │
+│ :5000    │     │ :3001    │
+└──────────┘     └──────────┘
+     │
+     ▼
+┌──────────┐
+│ MongoDB  │
+│ :27017   │
+└──────────┘
+
+Production:
+┌──────────────┐
+│   Frontend   │ (Vercel)
+│ React/Next   │
+└──────┬───────┘
+       │ HTTPS
+       ▼
+┌──────────────┐
+│   Backend    │ (Render/Railway)
+│   Express    │
+└──────┬───────┘
+       │
+       ├─────────────┐
+       │             │
+       ▼             ▼
+┌──────────┐   ┌──────────────┐
+│ MongoDB  │   │   Sandbox    │
+│  Atlas   │   │   (Docker)   │
+└──────────┘   └──────────────┘
+
+
+FILE STRUCTURE
+--------------
+
+DevFlow/
+├── backend/
+│   ├── controllers/
+│   │   └── problemController.js (uses sandbox)
+│   ├── routes/
+│   │   └── sandboxRoutes.js (new)
+│   ├── services/
+│   │   ├── sandboxService.js (new)
+│   │   ├── sandboxClientService.js (new)
+│   │   └── localExecutorService.js (fallback)
+│   └── server.js (updated)
+│
+└── sandbox/
+    ├── templates/
+    │   ├── cpp_function.template
+    │   ├── java_function.template
+    │   ├── python_function.template
+    │   └── javascript_function.template
+    ├── temp/ (execution workspace)
+    ├── sandboxServer.js (main server)
+    ├── test-sandbox.js (test suite)
+    ├── Dockerfile
+    ├── docker-compose.yml
+    ├── package.json
+    └── docs/
+        ├── QUICKSTART.txt
+        ├── SANDBOX_GUIDE.txt
+        ├── DEPLOYMENT_CHECKLIST.txt
+        └── ARCHITECTURE.txt (this file)
+
+
+KEY DESIGN PRINCIPLES
+---------------------
+
+1. Separation of Concerns
+   Backend: Business logic, problem management
+   Sandbox: Code execution only
+
+2. Security by Default
+   Multiple validation layers
+   Least privilege execution
+   Resource quotas
+
+3. Fail-Safe Design
+   Automatic fallback to local executor
+   Health checks before execution
+   Graceful error handling
+
+4. Language Agnostic
+   Unified interface for all languages
+   Language-specific configs
+   Template system for flexibility
+
+5. Production Ready
+   Docker isolation
+   Resource limits
+   Monitoring hooks
+   Comprehensive logging

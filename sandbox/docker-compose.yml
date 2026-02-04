@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  sandbox:
+    build: .
+    container_name: devflow-sandbox
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - ./temp:/sandbox/temp
+      - ./templates:/sandbox/templates:ro
+    networks:
+      - sandbox-network
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+    read_only: false
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=100m
+    mem_limit: 512m
+    cpus: 1.0
+    pids_limit: 50
+    restart: unless-stopped
+
+networks:
+  sandbox-network:
+    driver: bridge

@@ -1,0 +1,156 @@
+DevFlow Sandbox - Production Deployment Checklist
+=================================================
+
+PRE-DEPLOYMENT
+--------------
+[ ] All dependencies installed (backend and sandbox)
+[ ] Environment variables configured
+[ ] MongoDB connection tested
+[ ] Sandbox tested locally
+[ ] Backend tested locally
+[ ] Integration tests passed
+
+SANDBOX DEPLOYMENT
+------------------
+[ ] Docker installed on server
+[ ] Docker Compose installed
+[ ] Build Docker image: npm run docker:build
+[ ] Start container: npm run docker:up
+[ ] Verify container running: docker ps
+[ ] Check logs: npm run docker:logs
+[ ] Test health endpoint: curl http://localhost:3001/health
+[ ] Configure firewall (only backend can access)
+[ ] Set resource limits in docker-compose.yml
+[ ] Enable auto-restart policy
+
+BACKEND DEPLOYMENT
+------------------
+[ ] Deploy to Render/Railway/Heroku
+[ ] Set SANDBOX_URL environment variable
+[ ] Set MONGODB_URI environment variable
+[ ] Set API keys (GEMINI_API_KEY, JUDGE0_API_KEY)
+[ ] Configure CORS for frontend domain
+[ ] Test backend health: curl https://your-backend.com/api/health
+[ ] Test sandbox connection from backend
+[ ] Enable logging and monitoring
+
+SECURITY CHECKLIST
+------------------
+[ ] Sandbox runs as non-root user
+[ ] Network access disabled in sandbox
+[ ] Filesystem is read-only (except temp)
+[ ] Resource limits configured (CPU, memory, PIDs)
+[ ] Forbidden keywords list updated
+[ ] Code size limits enforced
+[ ] Test case count limits enforced
+[ ] Time limits enforced
+[ ] Memory limits enforced
+[ ] HTTPS enabled for backend
+[ ] API rate limiting configured
+
+MONITORING & LOGGING
+--------------------
+[ ] Container logs accessible
+[ ] Backend logs configured
+[ ] Error tracking setup (Sentry/similar)
+[ ] Performance monitoring enabled
+[ ] Disk space monitoring
+[ ] Memory usage monitoring
+[ ] CPU usage monitoring
+[ ] Alert system configured
+
+TESTING IN PRODUCTION
+---------------------
+[ ] Test Python execution
+[ ] Test C++ execution
+[ ] Test Java execution
+[ ] Test JavaScript execution
+[ ] Test C execution
+[ ] Test compilation errors
+[ ] Test runtime errors
+[ ] Test time limit exceeded
+[ ] Test wrong answer
+[ ] Test accepted solution
+[ ] Test multiple test cases
+[ ] Test concurrent submissions
+[ ] Load testing completed
+
+BACKUP & RECOVERY
+-----------------
+[ ] MongoDB backup configured
+[ ] Container restart policy set
+[ ] Rollback plan documented
+[ ] Health check endpoints monitored
+[ ] Auto-scaling configured (if needed)
+
+DOCUMENTATION
+-------------
+[ ] API documentation updated
+[ ] Deployment guide written
+[ ] Troubleshooting guide available
+[ ] Team trained on system
+[ ] Incident response plan ready
+
+POST-DEPLOYMENT
+---------------
+[ ] Monitor for 24 hours
+[ ] Check error rates
+[ ] Verify performance metrics
+[ ] Test from frontend
+[ ] User acceptance testing
+[ ] Document any issues
+[ ] Create runbook for operations
+
+OPTIMIZATION (FUTURE)
+---------------------
+[ ] Implement job queue (Bull/Redis)
+[ ] Add multiple sandbox workers
+[ ] Configure load balancing
+[ ] Implement caching
+[ ] Add batch execution
+[ ] Language-specific pools
+[ ] Custom checker support
+[ ] Float comparison tolerance
+
+MAINTENANCE SCHEDULE
+--------------------
+Daily:
+- Check error logs
+- Monitor resource usage
+- Verify sandbox health
+
+Weekly:
+- Review performance metrics
+- Clean up temp files
+- Update dependencies
+
+Monthly:
+- Security audit
+- Performance optimization
+- Capacity planning
+- Backup verification
+
+EMERGENCY CONTACTS
+------------------
+Backend Issues: [Your contact]
+Sandbox Issues: [Your contact]
+Database Issues: [Your contact]
+Infrastructure: [Your contact]
+
+ROLLBACK PROCEDURE
+------------------
+1. Stop new submissions
+2. Revert backend deployment
+3. Restart sandbox container
+4. Verify health checks
+5. Resume submissions
+6. Monitor closely
+
+SUCCESS CRITERIA
+----------------
+[ ] 99% uptime
+[ ] < 5s average execution time
+[ ] < 1% error rate
+[ ] All languages working
+[ ] Security tests passing
+[ ] Load tests passing

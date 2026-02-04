@@ -6,6 +6,7 @@ const gfgService = require('../services/gfgService');
 const codechefService = require('../services/codechefService');
 const testCaseGeneratorService = require('../services/testCaseGeneratorService');
 const localExecutorService = require('../services/localExecutorService');
+const sandboxClientService = require('../services/sandboxClientService');
 
 const getPlatformService = (url) => {
   if (url.includes('leetcode.com')) return { service: scrapeService, platform: 'leetcode' };
@@ -132,7 +133,7 @@ exports.getProblem = async (req, res) => {
 };
 
 exports.submitSolution = async (req, res) => {
-  const { code, language } = req.body;
+  const { code, language, use_sandbox = true } = req.body;
   const { id } = req.params;
   
   if (!code || !language) {
@@ -146,7 +147,33 @@ exports.submitSolution = async (req, res) => {
       return res.status(404).json({ error: 'Problem not found' });
     }
     
-    const result = await localExecutorService.executeCode(code, language, problem.testCases);
+    let result;
+    
+    if (use_sandbox) {
+      const isSandboxHealthy = await sandboxClientService.checkSandboxHealth();
+      
+      if (!isSandboxHealthy) {
+        console.log('Sandbox unavailable, falling back to local executor');
+        result = await localExecutorService.executeCode(code, language, problem.testCases);
+      } else {
+        const testcases = problem.testCases.map(tc => ({
+          input: tc.input,
+          expected_output: tc.output
+        }));
+        
+        result = await sandboxClientService.executeInSandbox(
+          language,
+          code,
+          testcases,
+          {
+            time_limit_ms: problem.timeLimit || 5000,
+            memory_mb: Math.floor((problem.memoryLimit || 256000) / 1024)
+          }
+        );
+      }
+    } else {
+      result = await localExecutorService.executeCode(code, language, problem.testCases);
+    }
     
     res.json({
       problemId: id,

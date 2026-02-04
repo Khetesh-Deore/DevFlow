@@ -1,0 +1,19 @@
+const readline = require('readline');
+
+{{USER_CODE}}
+
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+    terminal: false
+});
+
+rl.on('line', (line) => {
+    if (!line.trim()) return;
+    
+    {{INPUT_PARSER}}
+    
+    {{FUNCTION_CALL}}
+    
+    {{OUTPUT_FORMATTER}}
+});

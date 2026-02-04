@@ -1,0 +1,125 @@
+DevFlow Sandbox - Quick Start Guide
+====================================
+
+STEP 1: Install Dependencies
+-----------------------------
+cd sandbox
+npm install
+
+STEP 2: Start Sandbox Server
+-----------------------------
+npm start
+
+The sandbox will start on http://localhost:3001
+
+STEP 3: Test the Sandbox
+-------------------------
+In a new terminal:
+cd sandbox
+npm test
+
+This will run test cases for Python, C++, and JavaScript.
+
+STEP 4: Configure Backend
+--------------------------
+Add to backend/.env:
+SANDBOX_URL=http://localhost:3001
+
+STEP 5: Start Backend
+----------------------
+cd backend
+npm install
+npm run dev
+
+Backend will start on http://localhost:5000
+
+STEP 6: Submit a Problem
+-------------------------
+1. Create a problem via API or scrape from a platform
+2. Submit solution:
+
+curl -X POST http://localhost:5000/api/problems/{problemId}/submit \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "python",
+    "code": "print(input())",
+    "use_sandbox": true
+  }'
+
+DOCKER DEPLOYMENT (Optional)
+-----------------------------
+For production-grade isolation:
+
+cd sandbox
+npm run docker:build
+npm run docker:up
+
+Check status:
+docker ps
+
+View logs:
+npm run docker:logs
+
+Stop:
+npm run docker:down
+
+TESTING INDIVIDUAL LANGUAGES
+-----------------------------
+
+Python:
+curl -X POST http://localhost:3001/run \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "python",
+    "code": "print(input())",
+    "testcases": [{"input": "hello", "expected_output": "hello"}]
+  }'
+
+C++:
+curl -X POST http://localhost:3001/run \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "cpp",
+    "code": "#include <iostream>\nusing namespace std;\nint main() { int a; cin >> a; cout << a; return 0; }",
+    "testcases": [{"input": "42", "expected_output": "42"}]
+  }'
+
+JavaScript:
+curl -X POST http://localhost:3001/run \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "javascript",
+    "code": "console.log(require(\"fs\").readFileSync(0, \"utf-8\"))",
+    "testcases": [{"input": "test", "expected_output": "test"}]
+  }'
+
+TROUBLESHOOTING
+---------------
+
+Sandbox not starting:
+- Check if port 3001 is available
+- Ensure Node.js is installed
+- Run: npm install
+
+Compilation errors:
+- Install g++ for C++: apt-get install g++ (Linux) or install MinGW (Windows)
+- Install gcc for C: apt-get install gcc (Linux) or install MinGW (Windows)
+- Install Java: apt-get install openjdk-17-jdk (Linux) or download from Oracle (Windows)
+- Install Python: apt-get install python3 (Linux) or download from python.org (Windows)
+  Note: Windows uses 'python' command, Linux/Mac uses 'python3'
+
+Backend can't connect:
+- Verify SANDBOX_URL in backend/.env
+- Check sandbox is running: curl http://localhost:3001/health
+- Check firewall settings
+
+Python "input()" forbidden error:
+- This has been fixed - input() is now allowed for competitive programming
+- Update to latest version if you see this error
+
+NEXT STEPS
+----------
+1. Read SANDBOX_GUIDE.txt for detailed documentation
+2. Explore language templates in sandbox/templates/
+3. Customize constraints in backend/models/Problem.js
+4. Deploy to production with Docker

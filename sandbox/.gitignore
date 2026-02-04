@@ -1,0 +1,10 @@
+node_modules/
+temp/*
+!temp/.gitkeep
+*.log
+.env
+.DS_Store
+*.class
+*.exe
+*.o
+*.out
