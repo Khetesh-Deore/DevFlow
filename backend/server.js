@@ -13,6 +13,7 @@ const automatedRoutes = require('./routes/automatedRoutes');
 const authRoutes = require('./routes/authRoutes');
 const contestRoutes = require('./routes/contestRoutes');
 const submissionRoutes = require('./routes/submissionRoutes');
+const violationRoutes = require('./routes/violationRoutes');
 const { startCronJobs } = require('./services/cronService');
 
 const app = express();
@@ -68,6 +69,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/contests', contestRoutes);
 app.use('/api', submissionRoutes);
+app.use('/api', violationRoutes);
 app.use('/api', scrapeRoutes);
 app.use('/api/problems', problemRoutes);
 app.use('/api/sandbox', sandboxRoutes);
@@ -114,8 +116,26 @@ global.io = io;
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
   
+  socket.on('join-contest', (data) => {
+    const { contestId } = data;
+    socket.join(`contest-${contestId}`);
+    socket.contestId = contestId;
+    
+    const roomSize = io.sockets.adapter.rooms.get(`contest-${contestId}`)?.size || 0;
+    io.to(`contest-${contestId}`).emit('participant-count', roomSize);
+  });
+
+  socket.on('join-admin-room', (contestId) => {
+    socket.join(`admin-${contestId}`);
+  });
+  
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
+    
+    if (socket.contestId) {
+      const roomSize = io.sockets.adapter.rooms.get(`contest-${socket.contestId}`)?.size || 0;
+      io.to(`contest-${socket.contestId}`).emit('participant-count', roomSize);
+    }
   });
 });
 
