@@ -7,7 +7,7 @@ const helmet = require('helmet');
 const mongoose = require('mongoose');
 const { Server } = require('socket.io');
 
-const errorHandler = require('./middleware/errorHandler');
+const { errorHandler } = require('./middleware/errorHandler');
 const { initContestSocket } = require('./sockets/contestSocket');
 
 const authRoutes = require('./routes/auth');
