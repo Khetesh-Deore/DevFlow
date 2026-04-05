@@ -1,116 +1,69 @@
 const mongoose = require('mongoose');
-const slugify = require('slugify');
 
-const problemSchema = new mongoose.Schema({
-  title: {
-    type: String,
-    required: [true, 'Problem title is required'],
-    trim: true
-  },
-  slug: {
-    type: String
-  },
-  description: {
-    type: String,
-    required: [true, 'Problem description is required']
-  },
-  difficulty: {
-    type: String,
-    enum: ['easy', 'medium', 'hard'],
-    default: 'medium'
-  },
-  source: {
-    platform: {
-      type: String,
-      enum: ['leetcode', 'codeforces', 'hackerrank', 'gfg', 'codechef', 'custom'],
-      default: 'custom'
+const problemSchema = new mongoose.Schema(
+  {
+    title: { type: String, required: true, trim: true, maxlength: 200 },
+    slug: { type: String, unique: true },
+    description: { type: String, required: true },
+    difficulty: { type: String, enum: ['Easy', 'Medium', 'Hard'], required: true },
+    tags: [String],
+    inputFormat: { type: String, default: '' },
+    outputFormat: { type: String, default: '' },
+    constraints: { type: String, default: '' },
+    examples: [
+      {
+        input: String,
+        output: String,
+        explanation: String
+      }
+    ],
+    adminSolution: {
+      code: { type: String, select: false },
+      language: String
     },
-    url: String,
-    problemId: String
+    timeLimit: { type: Number, default: 2000 },
+    memoryLimit: { type: Number, default: 256 },
+    isPublished: { type: Boolean, default: false },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    totalSubmissions: { type: Number, default: 0 },
+    totalAccepted: { type: Number, default: 0 },
+    acceptanceRate: { type: Number, default: 0 },
+    hints: [String]
   },
-  constraints: String,
-  inputFormat: String,
-  outputFormat: String,
-  sampleTestCases: [{
-    input: String,
-    output: String,
-    explanation: String
-  }],
-  hiddenTestCases: [{
-    input: {
-      type: String,
-      required: true
-    },
-    output: {
-      type: String,
-      required: true
-    },
-    weight: {
-      type: Number,
-      default: 1
-    }
-  }],
-  limits: {
-    timeLimit: {
-      type: Number,
-      default: 2
-    },
-    memoryLimit: {
-      type: Number,
-      default: 256
-    }
-  },
-  points: {
-    type: Number,
-    default: 100
-  },
-  tags: [String],
-  createdBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  },
-  stats: {
-    totalSubmissions: {
-      type: Number,
-      default: 0
-    },
-    acceptedSubmissions: {
-      type: Number,
-      default: 0
-    },
-    successRate: {
-      type: Number,
-      default: 0
-    }
+  { timestamps: true }
+);
+
+const generateSlug = (title) =>
+  title
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-');
+
+problemSchema.pre('save', async function (next) {
+  if (!this.isNew && !this.isModified('title')) return next();
+
+  let slug = generateSlug(this.title);
+  const exists = await mongoose.model('Problem').findOne({ slug, _id: { $ne: this._id } });
+
+  if (exists) {
+    const rand = Math.floor(1000 + Math.random() * 9000);
+    slug = `${slug}-${rand}`;
   }
-}, {
-  timestamps: true
-});
 
-// Indexes
-problemSchema.index({ title: 1 });
-problemSchema.index({ slug: 1 }, { unique: true });
-problemSchema.index({ difficulty: 1 });
-problemSchema.index({ 'source.platform': 1 });
-problemSchema.index({ tags: 1 });
-
-// Generate slug before saving
-problemSchema.pre('save', function(next) {
-  if (this.isModified('title')) {
-    this.slug = slugify(this.title, { lower: true, strict: true }) + '-' + Date.now();
-  }
+  this.slug = slug;
   next();
 });
 
-// Update success rate
-problemSchema.methods.updateSuccessRate = function() {
-  if (this.stats.totalSubmissions > 0) {
-    this.stats.successRate = Math.round(
-      (this.stats.acceptedSubmissions / this.stats.totalSubmissions) * 100
-    );
+problemSchema.statics.updateAcceptanceRate = async function (problemId) {
+  const problem = await this.findById(problemId);
+  if (!problem) return;
+  if (problem.totalSubmissions === 0) {
+    problem.acceptanceRate = 0;
   } else {
-    this.stats.successRate = 0;
+    problem.acceptanceRate = (problem.totalAccepted / problem.totalSubmissions) * 100;
   }
+  await problem.save();
 };
 
 module.exports = mongoose.model('Problem', problemSchema);

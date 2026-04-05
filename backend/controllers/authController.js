@@ -1,258 +1,122 @@
+const crypto = require('crypto');
+const Joi = require('joi');
+const nodemailer = require('nodemailer');
 const User = require('../models/User');
+const asyncHandler = require('../utils/asyncHandler');
 
-// @desc    Register new user
-// @route   POST /api/auth/register
-// @access  Public
-exports.register = async (req, res) => {
-  try {
-    const { username, email, password, role } = req.body;
-
-    // Validation
-    if (!username || !email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide username, email, and password'
-      });
+const sendTokenResponse = (user, statusCode, res) => {
+  const token = user.getSignedJwtToken();
+  res.status(statusCode).json({
+    success: true,
+    token,
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      stats: user.stats
     }
-
-    // Check if user already exists
-    const existingUser = await User.findOne({
-      $or: [{ email }, { username }]
-    });
-
-    if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: existingUser.email === email 
-          ? 'Email already registered' 
-          : 'Username already taken'
-      });
-    }
-
-    // Create user
-    const user = await User.create({
-      username,
-      email,
-      password,
-      role: role || 'participant'
-    });
-
-    // Generate token
-    const token = user.generateAuthToken();
-
-    res.status(201).json({
-      success: true,
-      message: 'User registered successfully',
-      token,
-      user: user.toPublicJSON()
-    });
-  } catch (error) {
-    console.error('Register error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error registering user',
-      error: error.message
-    });
-  }
+  });
 };
 
-// @desc    Login user
-// @route   POST /api/auth/login
-// @access  Public
-exports.login = async (req, res) => {
-  try {
-    const { email, password } = req.body;
+exports.register = asyncHandler(async (req, res) => {
+  const schema = Joi.object({
+    name:       Joi.string().required(),
+    email:      Joi.string().email().required(),
+    password:   Joi.string().min(6).required(),
+    rollNumber: Joi.string().required(),
+    batch:      Joi.string().allow(''),
+    branch:     Joi.string().allow('')
+  });
 
-    // Validation
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide email and password'
-      });
-    }
+  const { error } = schema.validate(req.body);
+  if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    // Find user with password field
-    const user = await User.findOne({ email }).select('+password');
+  const { name, email, password, rollNumber, batch, branch } = req.body;
 
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials'
-      });
-    }
+  const emailExists = await User.findOne({ email });
+  if (emailExists) return res.status(400).json({ success: false, error: 'Email already registered' });
 
-    // Check password
-    const isPasswordMatch = await user.comparePassword(password);
+  const rollExists = await User.findOne({ rollNumber });
+  if (rollExists) return res.status(400).json({ success: false, error: 'Roll number already registered' });
 
-    if (!isPasswordMatch) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials'
-      });
-    }
+  const user = await User.create({ name, email, password, rollNumber, batch, branch });
+  sendTokenResponse(user, 201, res);
+});
 
-    // Generate token
-    const token = user.generateAuthToken();
+exports.login = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
 
-    res.status(200).json({
-      success: true,
-      message: 'Login successful',
-      token,
-      user: user.toPublicJSON()
-    });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error logging in',
-      error: error.message
-    });
+  if (!email || !password) {
+    return res.status(400).json({ success: false, error: 'Please provide email and password' });
   }
-};
 
-// @desc    Get current logged in user
-// @route   GET /api/auth/me
-// @access  Private
-exports.getMe = async (req, res) => {
+  const user = await User.findOne({ email }).select('+password');
+  if (!user) return res.status(401).json({ success: false, error: 'Invalid credentials' });
+
+  const isMatch = await user.matchPassword(password);
+  if (!isMatch) return res.status(401).json({ success: false, error: 'Invalid credentials' });
+
+  sendTokenResponse(user, 200, res);
+});
+
+exports.logout = asyncHandler(async (req, res) => {
+  res.status(200).json({ success: true, message: 'Logged out successfully' });
+});
+
+exports.getMe = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user.id);
+  res.status(200).json({ success: true, data: user });
+});
+
+exports.forgotPassword = asyncHandler(async (req, res) => {
+  const user = await User.findOne({ email: req.body.email });
+  if (!user) return res.status(404).json({ success: false, error: 'No user found with that email' });
+
+  const resetToken = user.getResetPasswordToken();
+  await user.save({ validateBeforeSave: false });
+
+  const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
+
   try {
-    const user = await User.findById(req.user.id);
+    const transporter = nodemailer.createTransport({
+      service: process.env.EMAIL_SERVICE,
+      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
+    });
 
-    res.status(200).json({
-      success: true,
-      user: user.toPublicJSON()
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: user.email,
+      subject: 'Password Reset Request',
+      text: `You requested a password reset. Click the link to reset your password:\n\n${resetUrl}\n\nThis link expires in 1 hour.`
     });
-  } catch (error) {
-    console.error('Get me error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching user data',
-      error: error.message
-    });
+
+    res.status(200).json({ success: true, message: 'Email sent' });
+  } catch (err) {
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    await user.save({ validateBeforeSave: false });
+    return res.status(500).json({ success: false, error: 'Email could not be sent' });
   }
-};
+});
 
-// @desc    Update user profile
-// @route   PUT /api/auth/profile
-// @access  Private
-exports.updateProfile = async (req, res) => {
-  try {
-    const { username, bio, country, avatar } = req.body;
+exports.resetPassword = asyncHandler(async (req, res) => {
+  const resetPasswordToken = crypto
+    .createHash('sha256')
+    .update(req.params.token)
+    .digest('hex');
 
-    const user = await User.findById(req.user.id);
+  const user = await User.findOne({
+    resetPasswordToken,
+    resetPasswordExpire: { $gt: Date.now() }
+  }).select('+resetPasswordToken +resetPasswordExpire');
 
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
+  if (!user) return res.status(400).json({ success: false, error: 'Invalid or expired token' });
 
-    // Check if username is taken by another user
-    if (username && username !== user.username) {
-      const existingUser = await User.findOne({ username });
-      if (existingUser) {
-        return res.status(400).json({
-          success: false,
-          message: 'Username already taken'
-        });
-      }
-      user.username = username;
-    }
+  user.password = req.body.password;
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpire = undefined;
+  await user.save();
 
-    // Update profile fields
-    if (bio !== undefined) user.profile.bio = bio;
-    if (country !== undefined) user.profile.country = country;
-    if (avatar !== undefined) user.profile.avatar = avatar;
-
-    await user.save();
-
-    res.status(200).json({
-      success: true,
-      message: 'Profile updated successfully',
-      user: user.toPublicJSON()
-    });
-  } catch (error) {
-    console.error('Update profile error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error updating profile',
-      error: error.message
-    });
-  }
-};
-
-// @desc    Change password
-// @route   PUT /api/auth/password
-// @access  Private
-exports.changePassword = async (req, res) => {
-  try {
-    const { currentPassword, newPassword } = req.body;
-
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide current and new password'
-      });
-    }
-
-    if (newPassword.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: 'New password must be at least 6 characters'
-      });
-    }
-
-    const user = await User.findById(req.user.id).select('+password');
-
-    // Verify current password
-    const isMatch = await user.comparePassword(currentPassword);
-
-    if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: 'Current password is incorrect'
-      });
-    }
-
-    // Update password
-    user.password = newPassword;
-    await user.save();
-
-    res.status(200).json({
-      success: true,
-      message: 'Password changed successfully'
-    });
-  } catch (error) {
-    console.error('Change password error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error changing password',
-      error: error.message
-    });
-  }
-};
-
-// @desc    Logout user
-// @route   POST /api/auth/logout
-// @access  Private
-exports.logout = async (req, res) => {
-  try {
-    // If using cookies, clear the cookie
-    res.cookie('token', 'none', {
-      expires: new Date(Date.now() + 10 * 1000),
-      httpOnly: true
-    });
-
-    res.status(200).json({
-      success: true,
-      message: 'Logged out successfully'
-    });
-  } catch (error) {
-    console.error('Logout error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error logging out',
-      error: error.message
-    });
-  }
-};
+  sendTokenResponse(user, 200, res);
+});

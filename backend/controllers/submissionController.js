@@ -1,178 +1,176 @@
 const Submission = require('../models/Submission');
-const Contest = require('../models/Contest');
 const Problem = require('../models/Problem');
-const submissionQueue = require('../services/submissionQueue');
+const TestCase = require('../models/TestCase');
+const User = require('../models/User');
+const asyncHandler = require('../utils/asyncHandler');
+const { executeCode } = require('../services/judgeService');
 
-exports.submitSolution = async (req, res) => {
+const processSubmission = async (submission, problem, userId) => {
   try {
-    const { contestId, problemId } = req.params;
-    const { code, language } = req.body;
+    const testCases = await TestCase.find({ problemId: problem._id }).sort({ isSample: -1, order: 1 });
 
-    if (!code || !language) {
-      return res.status(400).json({ success: false, message: 'Code and language required' });
+    submission.status = 'running';
+    submission.totalTestCases = testCases.length;
+    await submission.save();
+
+    const judgePayload = {
+      code: submission.code,
+      language: submission.language,
+      testcases: testCases.map(tc => ({
+        id: tc._id.toString(),
+        input: tc.input,
+        expected_output: tc.expectedOutput
+      })),
+      time_limit: problem.timeLimit,
+      memory_limit: problem.memoryLimit,
+      mode: 'submit'
+    };
+
+    const judgeResult = await executeCode(judgePayload);
+
+    submission.status = judgeResult.overall_status;
+    submission.passedTestCases = judgeResult.passed;
+    submission.compileError = judgeResult.compile_error || '';
+    submission.testCaseResults = (judgeResult.results || []).map(r => ({
+      testCaseId: r.testcase_id,
+      status: r.status,
+      timeTakenMs: r.time_taken_ms,
+      memoryUsedKb: r.memory_used_kb,
+      stdout: r.stdout,
+      stderr: r.stderr,
+      expected: r.expected,
+      got: r.got
+    }));
+
+    const times = (judgeResult.results || []).map(r => r.time_taken_ms || 0);
+    submission.timeTakenMs = times.length ? Math.max(...times) : 0;
+
+    await submission.save();
+
+    // Update problem stats
+    await Problem.findByIdAndUpdate(problem._id, { $inc: { totalSubmissions: 1 } });
+
+    // Update user stats
+    await User.findByIdAndUpdate(userId, { $inc: { 'stats.totalSubmissions': 1 } });
+
+    if (judgeResult.overall_status === 'accepted') {
+      await Problem.findByIdAndUpdate(problem._id, { $inc: { totalAccepted: 1 } });
+      await Problem.updateAcceptanceRate(problem._id);
+
+      const user = await User.findById(userId);
+      const alreadySolved = user.solvedProblems.some(id => id.toString() === problem._id.toString());
+
+      if (!alreadySolved) {
+        const diffMap = { Easy: 'easySolved', Medium: 'mediumSolved', Hard: 'hardSolved' };
+        await User.findByIdAndUpdate(userId, {
+          $addToSet: { solvedProblems: problem._id },
+          $inc: {
+            'stats.totalSolved': 1,
+            [`stats.${diffMap[problem.difficulty]}`]: 1
+          }
+        });
+      }
     }
-
-    if (code.length > 50000) {
-      return res.status(400).json({ success: false, message: 'Code too long (max 50KB)' });
-    }
-
-    const contest = await Contest.findById(contestId);
-    if (!contest) {
-      return res.status(404).json({ success: false, message: 'Contest not found' });
-    }
-
-    if (contest.status !== 'live') {
-      return res.status(400).json({ success: false, message: 'Contest not active' });
-    }
-
-    if (!contest.isUserRegistered(req.user._id)) {
-      return res.status(403).json({ success: false, message: 'Not registered for contest' });
-    }
-
-    const participant = contest.getParticipant(req.user._id);
-    if (participant && participant.locked) {
-      return res.status(403).json({ success: false, message: 'Submissions locked due to violations' });
-    }
-
-    const problem = await Problem.findById(problemId);
-    if (!problem) {
-      return res.status(404).json({ success: false, message: 'Problem not found' });
-    }
-
-    if (!contest.questions.includes(problemId)) {
-      return res.status(400).json({ success: false, message: 'Problem not in contest' });
-    }
-
-    const submission = await Submission.create({
-      contestId,
-      problemId,
-      userId: req.user._id,
-      code,
-      language,
-      status: 'pending',
-      testCasesPassed: 0,
-      totalTestCases: problem.hiddenTestCases.length,
-      submittedAt: new Date()
-    });
-
-    await submissionQueue.addSubmission({
-      submissionId: submission._id.toString(),
-      code,
-      language,
-      problemId: problem._id.toString(),
-      contestId: contest._id.toString(),
-      userId: req.user._id.toString(),
-      testCases: problem.hiddenTestCases,
-      limits: problem.limits,
-      points: problem.points
-    });
-
-    if (global.io) {
-      global.io.to(`contest-${contestId}`).emit('new-submission', {
-        submissionId: submission._id,
-        userId: req.user._id,
-        username: req.user.username,
-        problemId,
-        language,
-        timestamp: new Date()
-      });
-    }
-
-    res.status(201).json({
-      success: true,
-      submissionId: submission._id,
-      status: 'pending',
-      message: 'Submission queued for execution'
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+  } catch (err) {
+    submission.status = 'runtime_error';
+    submission.compileError = err.message;
+    await submission.save();
   }
 };
 
-exports.getSubmission = async (req, res) => {
-  try {
-    const submission = await Submission.findById(req.params.id)
-      .populate('userId', 'username profile.avatar')
-      .populate('problemId', 'title difficulty points')
-      .populate('contestId', 'title');
+exports.submitCode = asyncHandler(async (req, res) => {
+  const { code, language, problemId, contestId } = req.body;
 
-    if (!submission) {
-      return res.status(404).json({ success: false, message: 'Submission not found' });
-    }
-
-    if (submission.userId._id.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Not authorized' });
-    }
-
-    res.status(200).json({ success: true, submission });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+  if (!code || !language || !problemId) {
+    return res.status(400).json({ success: false, error: 'code, language, and problemId are required' });
   }
-};
 
-exports.getUserSubmissions = async (req, res) => {
-  try {
-    const { contestId, problemId, status, page = 1, limit = 20 } = req.query;
-    const query = { userId: req.user._id };
+  const problem = await Problem.findOne({ _id: problemId, isPublished: true });
+  if (!problem) return res.status(404).json({ success: false, error: 'Problem not found' });
 
-    if (contestId) query.contestId = contestId;
-    if (problemId) query.problemId = problemId;
-    if (status) query.status = status;
+  const submission = await Submission.create({
+    userId: req.user.id,
+    problemId,
+    code,
+    language,
+    status: 'pending',
+    contestId: contestId || null
+  });
 
-    const submissions = await Submission.find(query)
-      .populate('problemId', 'title difficulty')
-      .populate('contestId', 'title')
-      .sort({ submittedAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
-      .lean();
+  res.status(202).json({ success: true, submissionId: submission._id });
 
-    const count = await Submission.countDocuments(query);
+  setImmediate(() => processSubmission(submission, problem, req.user.id));
+});
 
-    res.status(200).json({
-      success: true,
-      submissions,
-      totalPages: Math.ceil(count / limit),
-      currentPage: page,
-      total: count
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+exports.runCode = asyncHandler(async (req, res) => {
+  const { code, language, input = '' } = req.body;
+
+  if (!code || !language) {
+    return res.status(400).json({ success: false, error: 'code and language are required' });
   }
-};
 
-exports.getContestSubmissions = async (req, res) => {
-  try {
-    const { contestId } = req.params;
-    const { page = 1, limit = 50 } = req.query;
+  const judgeResult = await executeCode({
+    code,
+    language,
+    testcases: [{ id: 'custom', input, expected_output: '' }],
+    time_limit: 5000,
+    memory_limit: 256,
+    mode: 'run'
+  });
 
-    const contest = await Contest.findById(contestId);
-    if (!contest) {
-      return res.status(404).json({ success: false, message: 'Contest not found' });
+  const r = judgeResult.results?.[0] || {};
+  res.status(200).json({
+    success: true,
+    data: {
+      status: judgeResult.overall_status,
+      stdout: r.stdout || '',
+      stderr: r.stderr || '',
+      timeTakenMs: r.time_taken_ms || 0,
+      compileError: judgeResult.compile_error || ''
     }
+  });
+});
 
-    if (contest.createdBy.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Not authorized' });
-    }
+exports.getSubmission = asyncHandler(async (req, res) => {
+  const submission = await Submission.findById(req.params.id);
+  if (!submission) return res.status(404).json({ success: false, error: 'Submission not found' });
 
-    const submissions = await Submission.find({ contestId })
-      .populate('userId', 'username profile.avatar')
-      .populate('problemId', 'title')
-      .sort({ submittedAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
-      .lean();
+  const isOwner = submission.userId.toString() === req.user.id.toString();
+  const isAdmin = ['admin', 'superadmin'].includes(req.user.role);
 
-    const count = await Submission.countDocuments({ contestId });
-
-    res.status(200).json({
-      success: true,
-      submissions,
-      totalPages: Math.ceil(count / limit),
-      currentPage: page,
-      total: count
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+  if (!isOwner && !isAdmin) {
+    return res.status(403).json({ success: false, error: 'Not authorized' });
   }
-};
+
+  res.status(200).json({ success: true, data: submission });
+});
+
+exports.getMySubmissions = asyncHandler(async (req, res) => {
+  const { problemId } = req.query;
+  if (!problemId) return res.status(400).json({ success: false, error: 'problemId is required' });
+
+  const submissions = await Submission.find({ userId: req.user.id, problemId })
+    .sort({ createdAt: -1 })
+    .limit(20);
+
+  res.status(200).json({ success: true, data: submissions });
+});
+
+exports.getAllSubmissions = asyncHandler(async (req, res) => {
+  const { userId, problemId, status, language, page = 1, limit = 20 } = req.query;
+  const query = {};
+  if (userId) query.userId = userId;
+  if (problemId) query.problemId = problemId;
+  if (status) query.status = status;
+  if (language) query.language = language;
+
+  const total = await Submission.countDocuments(query);
+  const submissions = await Submission.find(query)
+    .populate('userId', 'name email')
+    .populate('problemId', 'title slug')
+    .sort({ createdAt: -1 })
+    .skip((page - 1) * limit)
+    .limit(Number(limit));
+
+  res.status(200).json({ success: true, total, pages: Math.ceil(total / limit), data: submissions });
+});

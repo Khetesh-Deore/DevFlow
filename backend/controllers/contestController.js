@@ -1,368 +1,279 @@
 const Contest = require('../models/Contest');
+const ContestRegistration = require('../models/ContestRegistration');
+const ContestSubmission = require('../models/ContestSubmission');
+const Submission = require('../models/Submission');
 const Problem = require('../models/Problem');
+const TestCase = require('../models/TestCase');
 const User = require('../models/User');
+const asyncHandler = require('../utils/asyncHandler');
+const { executeCode } = require('../services/judgeService');
+const { computeLeaderboard } = require('../services/leaderboardService');
 
-exports.createContest = async (req, res) => {
+// ─── helpers ────────────────────────────────────────────────────────────────
+
+const getContestStatus = (contest) => {
+  const now = Date.now();
+  if (now < new Date(contest.startTime)) return 'upcoming';
+  if (now < new Date(contest.endTime)) return 'live';
+  return 'ended';
+};
+
+// ─── public ─────────────────────────────────────────────────────────────────
+
+exports.getContests = asyncHandler(async (req, res) => {
+  const { status } = req.query;
+  const query = { isPublished: true };
+
+  const contests = await Contest.find(query).sort({ startTime: -1 }).lean();
+
+  const withStatus = contests.map(c => ({
+    ...c,
+    status: getContestStatus(c)
+  }));
+
+  const filtered = status && status !== 'all'
+    ? withStatus.filter(c => c.status === status)
+    : withStatus;
+
+  res.status(200).json({ success: true, data: filtered });
+});
+
+exports.getContest = asyncHandler(async (req, res) => {
+  const isAdmin = req.user && ['admin', 'superadmin'].includes(req.user.role);
+
+  const contest = await Contest.findOne({ slug: req.params.slug })
+    .populate('problems.problemId', 'title slug difficulty tags')
+    .lean();
+
+  if (!contest) return res.status(404).json({ success: false, error: 'Contest not found' });
+  if (!contest.isPublished && !isAdmin) return res.status(404).json({ success: false, error: 'Contest not found' });
+
+  const status = getContestStatus(contest);
+
+  // Hide problems if upcoming
+  if (status === 'upcoming' && !isAdmin) {
+    contest.problems = [];
+  }
+
+  let isRegistered = false;
+  if (req.user) {
+    const reg = await ContestRegistration.findOne({ contestId: contest._id, userId: req.user.id });
+    isRegistered = !!reg;
+  }
+
+  res.status(200).json({ success: true, data: { ...contest, status }, isRegistered });
+});
+
+// ─── admin ───────────────────────────────────────────────────────────────────
+
+exports.createContest = asyncHandler(async (req, res) => {
+  const { title, description, type, startTime, endTime, problems = [],
+    scoringType, penaltyMinutes, rules, registrationRequired } = req.body;
+
+  if (new Date(startTime) <= Date.now()) {
+    return res.status(400).json({ success: false, error: 'startTime must be in the future' });
+  }
+  if (new Date(endTime) <= new Date(startTime)) {
+    return res.status(400).json({ success: false, error: 'endTime must be after startTime' });
+  }
+
+  for (const p of problems) {
+    const exists = await Problem.findById(p.problemId);
+    if (!exists) return res.status(400).json({ success: false, error: `Problem ${p.problemId} not found` });
+  }
+
+  const contest = await Contest.create({
+    title, description, type, startTime, endTime, problems,
+    scoringType, penaltyMinutes, rules, registrationRequired,
+    createdBy: req.user.id
+  });
+
+  res.status(201).json({ success: true, data: contest });
+});
+
+exports.updateContest = asyncHandler(async (req, res) => {
+  if (req.body.problems) {
+    for (const p of req.body.problems) {
+      const exists = await Problem.findById(p.problemId);
+      if (!exists) return res.status(400).json({ success: false, error: `Problem ${p.problemId} not found` });
+    }
+  }
+
+  const contest = await Contest.findById(req.params.id);
+  if (!contest) return res.status(404).json({ success: false, error: 'Contest not found' });
+
+  Object.assign(contest, req.body);
+  await contest.save();
+
+  res.status(200).json({ success: true, data: contest });
+});
+
+exports.deleteContest = asyncHandler(async (req, res) => {
+  const contest = await Contest.findById(req.params.id);
+  if (!contest) return res.status(404).json({ success: false, error: 'Contest not found' });
+
+  await Promise.all([
+    ContestRegistration.deleteMany({ contestId: contest._id }),
+    ContestSubmission.deleteMany({ contestId: contest._id }),
+    contest.deleteOne()
+  ]);
+
+  res.status(200).json({ success: true, message: 'Contest deleted' });
+});
+
+exports.togglePublish = asyncHandler(async (req, res) => {
+  const contest = await Contest.findById(req.params.id);
+  if (!contest) return res.status(404).json({ success: false, error: 'Contest not found' });
+  contest.isPublished = !contest.isPublished;
+  await contest.save();
+  res.status(200).json({ success: true, data: contest });
+});
+
+// ─── registration ────────────────────────────────────────────────────────────
+
+exports.registerForContest = asyncHandler(async (req, res) => {
+  const contest = await Contest.findById(req.params.id);
+  if (!contest) return res.status(404).json({ success: false, error: 'Contest not found' });
+
+  const status = getContestStatus(contest);
+  if (status === 'ended') return res.status(400).json({ success: false, error: 'Contest has ended' });
+
+  const existing = await ContestRegistration.findOne({ contestId: contest._id, userId: req.user.id });
+  if (existing) return res.status(400).json({ success: false, error: 'Already registered' });
+
+  await ContestRegistration.create({ contestId: contest._id, userId: req.user.id });
+  await Contest.findByIdAndUpdate(contest._id, { $inc: { registeredCount: 1 } });
+  await User.findByIdAndUpdate(req.user.id, { $addToSet: { contestsParticipated: contest._id } });
+
+  res.status(200).json({ success: true, message: 'Registered successfully' });
+});
+
+// ─── contest submission ───────────────────────────────────────────────────────
+
+const processContestSubmission = async (submission, contest, problem, contestProblem, userId, io) => {
   try {
-    const { title, description, customUrl, startTime, endTime, duration, questions, settings } = req.body;
+    const testCases = await TestCase.find({ problemId: problem._id }).sort({ isSample: -1, order: 1 });
 
-    if (!title || !description || !startTime || !endTime || !duration) {
-      return res.status(400).json({ success: false, message: 'Missing required fields' });
-    }
+    submission.status = 'running';
+    submission.totalTestCases = testCases.length;
+    await submission.save();
 
-    const existingContest = await Contest.findOne({ customUrl });
-    if (existingContest) {
-      return res.status(400).json({ success: false, message: 'Contest URL already exists' });
-    }
-
-    const contest = await Contest.create({
-      title,
-      description,
-      customUrl,
-      createdBy: req.user._id,
-      startTime: new Date(startTime),
-      endTime: new Date(endTime),
-      duration,
-      questions: questions || [],
-      settings: settings || {},
-      status: 'draft'
+    const judgeResult = await executeCode({
+      code: submission.code,
+      language: submission.language,
+      testcases: testCases.map(tc => ({ id: tc._id.toString(), input: tc.input, expected_output: tc.expectedOutput })),
+      time_limit: problem.timeLimit,
+      memory_limit: problem.memoryLimit,
+      mode: 'submit'
     });
 
-    res.status(201).json({ success: true, contest });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
+    submission.status = judgeResult.overall_status;
+    submission.passedTestCases = judgeResult.passed;
+    submission.compileError = judgeResult.compile_error || '';
+    submission.testCaseResults = (judgeResult.results || []).map(r => ({
+      testCaseId: r.testcase_id, status: r.status, timeTakenMs: r.time_taken_ms,
+      memoryUsedKb: r.memory_used_kb, stdout: r.stdout, stderr: r.stderr,
+      expected: r.expected, got: r.got
+    }));
+    submission.timeTakenMs = Math.max(...(judgeResult.results || []).map(r => r.time_taken_ms || 0), 0);
+    await submission.save();
 
-exports.getAllContests = async (req, res) => {
-  try {
-    const { status, visibility, page = 1, limit = 10 } = req.query;
-    const query = {};
+    const timeTakenSec = Math.floor((submission.submittedAt - contest.startTime) / 1000);
 
-    if (status) query.status = status;
-    if (visibility) query['settings.visibility'] = visibility;
-
-    const contests = await Contest.find(query)
-      .populate('createdBy', 'username email')
-      .populate('questions', 'title difficulty points')
-      .sort({ startTime: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
-      .lean();
-
-    const count = await Contest.countDocuments(query);
-
-    res.status(200).json({
-      success: true,
-      contests,
-      totalPages: Math.ceil(count / limit),
-      currentPage: page,
-      total: count
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-exports.getContestById = async (req, res) => {
-  try {
-    const contest = await Contest.findById(req.params.id)
-      .populate('createdBy', 'username email profile')
-      .populate('questions')
-      .populate('participants.userId', 'username profile.avatar');
-
-    if (!contest) {
-      return res.status(404).json({ success: false, message: 'Contest not found' });
-    }
-
-    res.status(200).json({ success: true, contest });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-exports.getContestByUrl = async (req, res) => {
-  try {
-    const contest = await Contest.findOne({ customUrl: req.params.customUrl })
-      .populate('createdBy', 'username email profile')
-      .populate('questions')
-      .populate('participants.userId', 'username profile.avatar');
-
-    if (!contest) {
-      return res.status(404).json({ success: false, message: 'Contest not found' });
-    }
-
-    res.status(200).json({ success: true, contest });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-exports.updateContest = async (req, res) => {
-  try {
-    const contest = await Contest.findById(req.params.id);
-
-    if (!contest) {
-      return res.status(404).json({ success: false, message: 'Contest not found' });
-    }
-
-    if (contest.createdBy.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ success: false, message: 'Not authorized' });
-    }
-
-    if (contest.status === 'live' || contest.status === 'ended') {
-      return res.status(400).json({ success: false, message: 'Cannot update live or ended contest' });
-    }
-
-    const allowedUpdates = ['title', 'description', 'startTime', 'endTime', 'duration', 'settings'];
-    const updates = {};
-
-    allowedUpdates.forEach(field => {
-      if (req.body[field] !== undefined) {
-        updates[field] = req.body[field];
-      }
+    const attemptCount = await ContestSubmission.countDocuments({
+      contestId: contest._id, userId, problemId: problem._id
     });
 
-    Object.assign(contest, updates);
-    await contest.save();
+    const penalty = judgeResult.overall_status !== 'accepted'
+      ? (attemptCount * contest.penaltyMinutes)
+      : 0;
 
-    res.status(200).json({ success: true, contest });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
+    const points = judgeResult.overall_status === 'accepted' ? contestProblem.points : 0;
 
-exports.deleteContest = async (req, res) => {
-  try {
-    const contest = await Contest.findById(req.params.id);
-
-    if (!contest) {
-      return res.status(404).json({ success: false, message: 'Contest not found' });
-    }
-
-    if (contest.createdBy.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ success: false, message: 'Not authorized' });
-    }
-
-    if (contest.status === 'live') {
-      return res.status(400).json({ success: false, message: 'Cannot delete live contest' });
-    }
-
-    await contest.deleteOne();
-
-    res.status(200).json({ success: true, message: 'Contest deleted' });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-exports.registerForContest = async (req, res) => {
-  try {
-    const contest = await Contest.findById(req.params.id);
-
-    if (!contest) {
-      return res.status(404).json({ success: false, message: 'Contest not found' });
-    }
-
-    if (contest.status === 'ended') {
-      return res.status(400).json({ success: false, message: 'Contest has ended' });
-    }
-
-    if (contest.isUserRegistered(req.user._id)) {
-      return res.status(400).json({ success: false, message: 'Already registered' });
-    }
-
-    contest.participants.push({
-      userId: req.user._id,
-      registeredAt: new Date(),
-      score: 0,
-      solvedQuestions: [],
-      submissions: [],
-      rank: 0,
-      violations: [],
-      locked: false
+    await ContestSubmission.create({
+      contestId: contest._id,
+      userId,
+      problemId: problem._id,
+      submissionId: submission._id,
+      status: judgeResult.overall_status,
+      points,
+      timeTakenSec,
+      attemptNumber: attemptCount + 1,
+      penaltyMinutes: penalty,
+      isFirstAccepted: judgeResult.overall_status === 'accepted' && attemptCount === 0,
+      submittedAt: submission.submittedAt
     });
 
-    await contest.save();
+    if (judgeResult.overall_status === 'accepted') {
+      if (io) io.to(`contest:${contest._id}`).emit('leaderboard:update', { userId, problemId: problem._id });
+    }
 
-    res.status(200).json({ success: true, message: 'Registered successfully' });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    await Problem.findByIdAndUpdate(problem._id, { $inc: { totalSubmissions: 1 } });
+    if (judgeResult.overall_status === 'accepted') {
+      await Problem.findByIdAndUpdate(problem._id, { $inc: { totalAccepted: 1 } });
+      await Problem.updateAcceptanceRate(problem._id);
+    }
+    await User.findByIdAndUpdate(userId, { $inc: { 'stats.totalSubmissions': 1 } });
+
+  } catch (err) {
+    submission.status = 'runtime_error';
+    submission.compileError = err.message;
+    await submission.save();
   }
 };
 
-exports.unregisterFromContest = async (req, res) => {
-  try {
-    const contest = await Contest.findById(req.params.id);
+exports.submitInContest = asyncHandler(async (req, res) => {
+  const { code, language, problemId } = req.body;
+  const { slug } = req.params;
 
-    if (!contest) {
-      return res.status(404).json({ success: false, message: 'Contest not found' });
-    }
+  const contest = await Contest.findOne({ slug });
+  if (!contest) return res.status(404).json({ success: false, error: 'Contest not found' });
 
-    if (contest.status === 'live' || contest.status === 'ended') {
-      return res.status(400).json({ success: false, message: 'Cannot unregister from live or ended contest' });
-    }
+  const status = getContestStatus(contest);
+  if (status !== 'live') return res.status(403).json({ success: false, error: 'Contest is not live' });
 
-    contest.participants = contest.participants.filter(
-      p => p.userId.toString() !== req.user._id.toString()
-    );
+  const reg = await ContestRegistration.findOne({ contestId: contest._id, userId: req.user.id });
+  if (!reg) return res.status(403).json({ success: false, error: 'You are not registered for this contest' });
 
-    await contest.save();
+  const contestProblem = contest.problems.find(p => p.problemId.toString() === problemId);
+  if (!contestProblem) return res.status(404).json({ success: false, error: 'Problem not in this contest' });
 
-    res.status(200).json({ success: true, message: 'Unregistered successfully' });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
+  const alreadyAC = await ContestSubmission.findOne({
+    contestId: contest._id, userId: req.user.id, problemId, status: 'accepted'
+  });
+  if (alreadyAC) return res.status(400).json({ success: false, error: 'You already solved this problem' });
 
-exports.addProblemToContest = async (req, res) => {
-  try {
-    const { problemId } = req.body;
-    const contest = await Contest.findById(req.params.id);
+  const problem = await Problem.findById(problemId);
+  if (!problem) return res.status(404).json({ success: false, error: 'Problem not found' });
 
-    if (!contest) {
-      return res.status(404).json({ success: false, message: 'Contest not found' });
-    }
+  const submission = await Submission.create({
+    userId: req.user.id, problemId, code, language,
+    status: 'pending', contestId: contest._id
+  });
 
-    if (contest.createdBy.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ success: false, message: 'Not authorized' });
-    }
+  res.status(202).json({ success: true, submissionId: submission._id });
 
-    if (contest.status === 'live' || contest.status === 'ended') {
-      return res.status(400).json({ success: false, message: 'Cannot modify live or ended contest' });
-    }
+  const io = req.app.get('io');
+  setImmediate(() => processContestSubmission(submission, contest, problem, contestProblem, req.user.id, io));
+});
 
-    const problem = await Problem.findById(problemId);
-    if (!problem) {
-      return res.status(404).json({ success: false, message: 'Problem not found' });
-    }
+// ─── leaderboard ─────────────────────────────────────────────────────────────
 
-    if (contest.questions.includes(problemId)) {
-      return res.status(400).json({ success: false, message: 'Problem already added' });
-    }
+exports.getContestLeaderboard = asyncHandler(async (req, res) => {
+  const contest = await Contest.findOne({ slug: req.params.slug });
+  if (!contest) return res.status(404).json({ success: false, error: 'Contest not found' });
 
-    contest.questions.push(problemId);
-    await contest.save();
+  const leaderboard = await computeLeaderboard(contest);
+  res.status(200).json({ success: true, data: leaderboard });
+});
 
-    res.status(200).json({ success: true, contest });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
+exports.getContestSubmissions = asyncHandler(async (req, res) => {
+  const contest = await Contest.findOne({ slug: req.params.slug });
+  if (!contest) return res.status(404).json({ success: false, error: 'Contest not found' });
 
-exports.removeProblemFromContest = async (req, res) => {
-  try {
-    const { problemId } = req.params;
-    const contest = await Contest.findById(req.params.id);
+  const submissions = await ContestSubmission.find({ contestId: contest._id, userId: req.user.id })
+    .populate('problemId', 'title slug')
+    .sort({ submittedAt: -1 });
 
-    if (!contest) {
-      return res.status(404).json({ success: false, message: 'Contest not found' });
-    }
-
-    if (contest.createdBy.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ success: false, message: 'Not authorized' });
-    }
-
-    if (contest.status === 'live' || contest.status === 'ended') {
-      return res.status(400).json({ success: false, message: 'Cannot modify live or ended contest' });
-    }
-
-    contest.questions = contest.questions.filter(q => q.toString() !== problemId);
-    await contest.save();
-
-    res.status(200).json({ success: true, contest });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-exports.getContestProblems = async (req, res) => {
-  try {
-    const contest = await Contest.findById(req.params.id).populate('questions');
-
-    if (!contest) {
-      return res.status(404).json({ success: false, message: 'Contest not found' });
-    }
-
-    if (contest.status === 'draft' && contest.createdBy.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ success: false, message: 'Contest not accessible' });
-    }
-
-    res.status(200).json({ success: true, problems: contest.questions });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-exports.getContestParticipants = async (req, res) => {
-  try {
-    const contest = await Contest.findById(req.params.id)
-      .populate('participants.userId', 'username email profile');
-
-    if (!contest) {
-      return res.status(404).json({ success: false, message: 'Contest not found' });
-    }
-
-    res.status(200).json({ success: true, participants: contest.participants });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-exports.publishContest = async (req, res) => {
-  try {
-    const contest = await Contest.findById(req.params.id);
-
-    if (!contest) {
-      return res.status(404).json({ success: false, message: 'Contest not found' });
-    }
-
-    if (contest.createdBy.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ success: false, message: 'Not authorized' });
-    }
-
-    if (contest.questions.length === 0) {
-      return res.status(400).json({ success: false, message: 'Add at least one problem' });
-    }
-
-    contest.status = 'scheduled';
-    await contest.save();
-
-    res.status(200).json({ success: true, contest });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-exports.endContest = async (req, res) => {
-  try {
-    const contest = await Contest.findById(req.params.id);
-
-    if (!contest) {
-      return res.status(404).json({ success: false, message: 'Contest not found' });
-    }
-
-    if (contest.createdBy.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ success: false, message: 'Not authorized' });
-    }
-
-    if (contest.status !== 'live') {
-      return res.status(400).json({ success: false, message: 'Contest is not live' });
-    }
-
-    contest.status = 'ended';
-    contest.endTime = new Date();
-    await contest.save();
-
-    if (global.io) {
-      global.io.to(`contest-${contest._id}`).emit('contest-ended', {
-        contestId: contest._id,
-        reason: 'Ended by admin'
-      });
-    }
-
-    res.status(200).json({ success: true, contest });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
+  res.status(200).json({ success: true, data: submissions });
+});
