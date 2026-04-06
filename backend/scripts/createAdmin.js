@@ -16,8 +16,8 @@ const run = async () => {
 
   const admin = await User.create({
     name: 'Admin',
-    email: 'admin@college.edu',
-    password: 'Admin@123',
+    email: 'admin@kkwagh.edu.in',
+    password: 'Admin@123devflow',
     rollNumber: 'ADMIN001',
     role: 'superadmin',
     isVerified: true,

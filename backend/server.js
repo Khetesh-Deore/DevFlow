@@ -4,11 +4,11 @@ const express = require('express');
 const http = require('http');
 const cors = require('cors');
 const helmet = require('helmet');
-const mongoose = require('mongoose');
 const { Server } = require('socket.io');
 
 const { errorHandler } = require('./middleware/errorHandler');
 const { initContestSocket } = require('./sockets/contestSocket');
+const connectDB = require('./config/db');
 
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
@@ -45,13 +45,7 @@ const io = new Server(server, {
 app.set('io', io);
 initContestSocket(io);
 
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => console.log('MongoDB connected'))
-  .catch((err) => {
-    console.error('MongoDB connection error:', err.message);
-    process.exit(1);
-  });
+connectDB();
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
