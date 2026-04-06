@@ -39,15 +39,19 @@ contestSchema.virtual('status').get(function () {
 });
 
 contestSchema.pre('save', async function (next) {
-  // Auto-generate slug
   if (this.isNew || this.isModified('title')) {
-    let slug = generateSlug(this.title);
+    const base = generateSlug(this.title);
+    // Always append timestamp to guarantee uniqueness
+    const ts = Date.now().toString(36);
+    let slug = `${base}-${ts}`;
+
+    // Extra check just in case
     const exists = await mongoose.model('Contest').findOne({ slug, _id: { $ne: this._id } });
-    if (exists) slug = `${slug}-${Math.floor(1000 + Math.random() * 9000)}`;
+    if (exists) slug = `${base}-${ts}-${Math.floor(Math.random() * 999)}`;
+
     this.slug = slug;
   }
 
-  // Auto-calculate duration
   if (this.startTime && this.endTime) {
     this.duration = Math.round((this.endTime - this.startTime) / 60000);
   }

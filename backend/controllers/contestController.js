@@ -22,7 +22,10 @@ const getContestStatus = (contest) => {
 
 exports.getContests = asyncHandler(async (req, res) => {
   const { status } = req.query;
-  const query = { isPublished: true };
+  const isAdmin = req.user && ['admin', 'superadmin'].includes(req.user.role);
+
+  // Admins see all contests, users only see published
+  const query = isAdmin ? {} : { isPublished: true };
 
   const contests = await Contest.find(query).sort({ startTime: -1 }).lean();
 
@@ -70,9 +73,6 @@ exports.createContest = asyncHandler(async (req, res) => {
   const { title, description, type, startTime, endTime, problems = [],
     scoringType, penaltyMinutes, rules, registrationRequired } = req.body;
 
-  if (new Date(startTime) <= Date.now()) {
-    return res.status(400).json({ success: false, error: 'startTime must be in the future' });
-  }
   if (new Date(endTime) <= new Date(startTime)) {
     return res.status(400).json({ success: false, error: 'endTime must be after startTime' });
   }

@@ -18,9 +18,12 @@ const errorHandler = (err, req, res, next) => {
 
   // MongoDB duplicate key
   if (err.code === 11000) {
-    const field = Object.keys(err.keyValue)[0];
+    const field = Object.keys(err.keyValue || {})[0] || 'field';
+    // Map internal field names to user-friendly names
+    const fieldMap = { customUrl: 'slug', username: 'username', email: 'email', rollNumber: 'rollNumber', slug: 'slug' };
+    const friendlyField = fieldMap[field] || field;
     statusCode = 400;
-    message = `Duplicate field value entered: ${field}`;
+    message = `Duplicate field value entered: ${friendlyField}`;
   }
 
   // Mongoose ValidationError

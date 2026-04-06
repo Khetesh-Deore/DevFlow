@@ -11,8 +11,19 @@ const { protect, authorize } = require('../middleware/auth');
 
 const admin = [protect, authorize('admin', 'superadmin')];
 
+// Optional auth middleware — attaches user if token present, doesn't fail if not
+const optionalAuth = async (req, res, next) => {
+  try {
+    const { protect: protectFn } = require('../middleware/auth');
+    if (req.headers.authorization?.startsWith('Bearer')) {
+      return protectFn(req, res, next);
+    }
+  } catch {}
+  next();
+};
+
 // Public
-router.get('/', getContests);
+router.get('/', optionalAuth, getContests);
 router.get('/:slug', getContest);
 
 // Protected

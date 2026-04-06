@@ -44,13 +44,11 @@ problemSchema.pre('save', async function (next) {
   if (!this.isNew && !this.isModified('title')) return next();
 
   let slug = generateSlug(this.title);
-  const exists = await mongoose.model('Problem').findOne({ slug, _id: { $ne: this._id } });
-
-  if (exists) {
-    const rand = Math.floor(1000 + Math.random() * 9000);
-    slug = `${slug}-${rand}`;
+  let exists = await mongoose.model('Problem').findOne({ slug, _id: { $ne: this._id } });
+  while (exists) {
+    slug = `${generateSlug(this.title)}-${Math.floor(1000 + Math.random() * 9000)}`;
+    exists = await mongoose.model('Problem').findOne({ slug, _id: { $ne: this._id } });
   }
-
   this.slug = slug;
   next();
 });

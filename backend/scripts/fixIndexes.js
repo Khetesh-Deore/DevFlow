@@ -1,25 +1,58 @@
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
-const mongoose = require('mongoose');
+const { MongoClient } = require('mongodb');
 
 async function fix() {
-  await mongoose.connect(process.env.MONGO_URI, { dbName: 'devflow' });
-  console.log('Connected');
+  // Connect directly without dbName to use the one in URI
+  const uri = process.env.MONGO_URI;
+  const client = new MongoClient(uri);
+  await client.connect();
 
-  const db = mongoose.connection.db;
-  const collection = db.collection('users');
+  // List all databases to find the right one
+  const adminDb = client.db('admin');
+  const dbs = await adminDb.admin().listDatabases();
+  console.log('Available databases:', dbs.databases.map(d => d.name));
 
-  const indexes = await collection.indexes();
-  console.log('Current indexes:', indexes.map(i => i.name));
+  // Try both case variations
+  for (const dbName of ['devflow', 'DevFlow', 'fullstack_DevFlow', 'fullstack_devflow']) {
+    try {
+      const db = client.db(dbName);
+      const collections = await db.listCollections().toArray();
+      const colNames = collections.map(c => c.name);
+      console.log(`\nDB: ${dbName} | Collections:`, colNames);
 
-  // Drop the bad username index if it exists
-  for (const idx of indexes) {
-    if (idx.key && idx.key.username !== undefined) {
-      await collection.dropIndex(idx.name);
-      console.log(`✅ Dropped index: ${idx.name}`);
+      if (colNames.includes('contests')) {
+        const contests = db.collection('contests');
+        const indexes = await contests.indexes();
+        console.log('Contest indexes:', indexes.map(i => `${i.name}:${JSON.stringify(i.key)}`));
+
+        for (const idx of indexes) {
+          if (idx.name !== '_id_') {
+            await contests.dropIndex(idx.name);
+            console.log(`✅ Dropped: ${idx.name}`);
+          }
+        }
+        // Recreate only slug index
+        await contests.createIndex({ slug: 1 }, { unique: true, sparse: true });
+        console.log('✅ Recreated slug index (sparse)');
+      }
+
+      if (colNames.includes('users')) {
+        const users = db.collection('users');
+        const indexes = await users.indexes();
+        for (const idx of indexes) {
+          if (Object.keys(idx.key).some(k => ['username', 'customUrl'].includes(k))) {
+            await users.dropIndex(idx.name);
+            console.log(`✅ Dropped users index: ${idx.name}`);
+          }
+        }
+      }
+    } catch (e) {
+      console.log(`  ${dbName}: ${e.message}`);
     }
   }
 
-  console.log('Done');
+  await client.close();
+  console.log('\n✅ Done. Restart server.');
   process.exit(0);
 }
 

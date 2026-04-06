@@ -5,7 +5,7 @@ import { Plus, X, ChevronUp, ChevronDown, Search, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/axiosConfig';
 import { createContest, updateContest } from '../../api/contestApi';
-import { getProblems } from '../../api/problemApi';
+import { getAdminProblems } from '../../api/adminApi';
 import DifficultyBadge from '../../components/Problem/DifficultyBadge';
 
 const inputClass = 'w-full bg-gray-800 text-white text-sm px-4 py-2.5 rounded-lg border border-gray-700 focus:outline-none focus:border-blue-500';
@@ -76,11 +76,11 @@ export default function AdminContestForm() {
     }
   }, [contestData]);
 
-  // Problem search
+  // Problem search — load all on mount, filter by search
   const { data: searchData, isLoading: searching } = useQuery({
-    queryKey: ['problem-search', search],
-    queryFn: () => getProblems({ search, limit: 10 }),
-    enabled: search.length >= 2
+    queryKey: ['admin-problem-search', search],
+    queryFn: () => getAdminProblems({ search, limit: 50 }),
+    staleTime: 30000
   });
 
   const searchResults = (searchData?.data || []).filter(
@@ -256,29 +256,29 @@ export default function AdminContestForm() {
                 className={`${inputClass} pl-8`} />
             </div>
 
-            {/* Search Results */}
-            {search.length >= 2 && (
-              <div className="border border-gray-700 rounded-lg mb-4 overflow-hidden">
-                {searching ? (
-                  <div className="p-3 text-center text-gray-500 text-sm">Searching...</div>
-                ) : searchResults.length === 0 ? (
-                  <div className="p-3 text-center text-gray-500 text-sm">No results</div>
-                ) : (
-                  searchResults.map(p => (
-                    <div key={p._id} className="flex items-center justify-between px-4 py-2.5 border-b border-gray-700 last:border-0 hover:bg-gray-800">
-                      <div className="flex items-center gap-3">
-                        <DifficultyBadge difficulty={p.difficulty} />
-                        <span className="text-sm text-white">{p.title}</span>
-                      </div>
-                      <button onClick={() => addProblem(p)}
-                        className="flex items-center gap-1 text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg">
-                        <Plus size={12} /> Add
-                      </button>
+            {/* Search Results — always visible */}
+            <div className="border border-gray-700 rounded-lg mb-4 overflow-hidden max-h-60 overflow-y-auto">
+              {searching ? (
+                <div className="p-3 text-center text-gray-500 text-sm">Loading problems...</div>
+              ) : searchResults.length === 0 ? (
+                <div className="p-3 text-center text-gray-500 text-sm">
+                  {search ? 'No matching problems' : 'No problems available'}
+                </div>
+              ) : (
+                searchResults.map(p => (
+                  <div key={p._id} className="flex items-center justify-between px-4 py-2.5 border-b border-gray-700 last:border-0 hover:bg-gray-800">
+                    <div className="flex items-center gap-3">
+                      <DifficultyBadge difficulty={p.difficulty} />
+                      <span className="text-sm text-white">{p.title}</span>
                     </div>
-                  ))
-                )}
-              </div>
-            )}
+                    <button onClick={() => addProblem(p)}
+                      className="flex items-center gap-1 text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg">
+                      <Plus size={12} /> Add
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
 
             {/* Added Problems */}
             {errors.problems && <p className="text-red-400 text-xs mb-3">{errors.problems}</p>}
