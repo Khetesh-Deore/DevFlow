@@ -110,11 +110,16 @@ export default function ProblemDetailPage() {
 
   const handleRun = async () => {
     if (!code.trim()) return toast.error('Write some code first');
+    const input = customInput || problem?.sampleTestCases?.[0]?.input || '';
+    if (!input.trim()) {
+      toast.error('Please enter custom input or add a sample test case to the problem');
+      setShowCustomInput(true);
+      return;
+    }
     setIsRunning(true);
     setActiveResult('run');
     setRunResult(null);
     try {
-      const input = customInput || problem?.sampleTestCases?.[0]?.input || '';
       const res = await runCode({ code, language, input });
       setRunResult(res.data);
     } catch (err) {

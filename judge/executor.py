@@ -73,8 +73,8 @@ async def execute_code(request: ExecuteRequest) -> ExecuteResponse:
             start = time.time()
 
             try:
-                # Ensure input ends with newline for readline-based code
-                tc_input = tc.input if tc.input.endswith('\n') else tc.input + '\n'
+                # Ensure input ends with newline but don't add extra if already present
+                tc_input = tc.input.strip('\n') + '\n' if tc.input else '\n'
                 proc = subprocess.run(
                     run_cmd,
                     input=tc_input.encode(),
