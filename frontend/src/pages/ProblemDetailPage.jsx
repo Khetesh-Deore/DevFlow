@@ -84,7 +84,7 @@ export default function ProblemDetailPage() {
   const [language, setLanguage] = useState('python');
   const [code, setCode] = useState(DEFAULT_TEMPLATES.python);
   const [customInput, setCustomInput] = useState('');
-  const [showCustomInput, setShowCustomInput] = useState(false);
+  const [showCustomInput, setShowCustomInput] = useState(true); // show by default like LeetCode
   const [isRunning, setIsRunning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [runResult, setRunResult] = useState(null);
@@ -108,11 +108,23 @@ export default function ProblemDetailPage() {
   // Cleanup polling on unmount
   useEffect(() => () => clearInterval(pollRef.current), []);
 
+  // Pre-fill custom input with first sample test case or first example
+  useEffect(() => {
+    if (!problem) return;
+    const sampleInput = problem.sampleTestCases?.[0]?.input
+      || problem.examples?.[0]?.input
+      || '';
+    if (sampleInput) setCustomInput(sampleInput);
+  }, [problem]);
+
   const handleRun = async () => {
     if (!code.trim()) return toast.error('Write some code first');
-    const input = customInput || problem?.sampleTestCases?.[0]?.input || '';
+    const input = customInput
+      || problem?.sampleTestCases?.[0]?.input
+      || problem?.examples?.[0]?.input
+      || '';
     if (!input.trim()) {
-      toast.error('Please enter custom input or add a sample test case to the problem');
+      toast.error('Please enter input in the custom input box');
       setShowCustomInput(true);
       return;
     }
