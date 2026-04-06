@@ -164,6 +164,22 @@ exports.getMySubmissions = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: submissions });
 });
 
+exports.getSubmissionHistory = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 20, status, language } = req.query;
+  const query = { userId: req.user.id };
+  if (status) query.status = status;
+  if (language) query.language = language;
+
+  const total = await Submission.countDocuments(query);
+  const submissions = await Submission.find(query)
+    .populate('problemId', 'title slug difficulty')
+    .sort({ createdAt: -1 })
+    .skip((page - 1) * limit)
+    .limit(Number(limit));
+
+  res.status(200).json({ success: true, total, pages: Math.ceil(total / limit), data: submissions });
+});
+
 exports.getAllSubmissions = asyncHandler(async (req, res) => {
   const { userId, problemId, status, language, page = 1, limit = 20 } = req.query;
   const query = {};
