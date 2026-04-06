@@ -52,7 +52,7 @@ exports.getAdminProblems = asyncHandler(async (req, res) => {
 
   const total = await Problem.countDocuments(query);
   const problems = await Problem.find(query)
-    .select('-adminSolution')
+    .select({ adminSolution: 0 })
     .populate('createdBy', 'name')
     .sort({ createdAt: -1 })
     .skip((page - 1) * limit)

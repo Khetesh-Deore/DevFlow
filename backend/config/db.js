@@ -6,6 +6,12 @@ let isConnecting = false;
 
 const connectDB = async () => {
   if (isConnecting) return;
+
+  if (!process.env.MONGO_URI) {
+    console.error('❌ MONGO_URI is not defined in .env file');
+    return;
+  }
+
   isConnecting = true;
 
   try {
@@ -32,6 +38,7 @@ const connectDB = async () => {
 };
 
 mongoose.connection.on('disconnected', () => {
+  if (!process.env.MONGO_URI) return;
   console.warn('MongoDB disconnected. Reconnecting...');
   isConnecting = false;
   setTimeout(connectDB, 10000);

@@ -18,7 +18,7 @@ router.get('/:slug', getProblem);
 // Admin — get single problem by ID (includes draft + adminSolution)
 router.get('/admin/:id', ...admin, async (req, res) => {
   const Problem = require('../models/Problem');
-  const problem = await Problem.findById(req.params.id).select('+adminSolution.code');
+  const problem = await Problem.findById(req.params.id);
   if (!problem) return res.status(404).json({ success: false, error: 'Problem not found' });
   res.status(200).json({ success: true, data: problem });
 });

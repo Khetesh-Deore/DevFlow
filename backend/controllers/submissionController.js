@@ -92,7 +92,8 @@ exports.submitCode = asyncHandler(async (req, res) => {
   try {
     await checkJudgeHealth();
   } catch {
-    return res.status(503).json({ success: false, error: 'Judge service is warming up. Please retry in 30 seconds.' });
+    // Judge is down or cold starting — still create submission but warn
+    console.warn('Judge service unavailable, submission queued');
   }
 
   const submission = await Submission.create({

@@ -18,7 +18,7 @@ const problemSchema = new mongoose.Schema(
       }
     ],
     adminSolution: {
-      code: { type: String, select: false },
+      code: { type: String },
       language: String
     },
     timeLimit: { type: Number, default: 2000 },

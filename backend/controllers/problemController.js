@@ -17,7 +17,6 @@ exports.getProblems = asyncHandler(async (req, res) => {
     .skip((page - 1) * limit)
     .limit(Number(limit))
     .lean();
-
   if (req.user) {
     const solvedSet = new Set(req.user.solvedProblems.map(id => id.toString()));
     problems.forEach(p => {
@@ -36,7 +35,7 @@ exports.getProblems = asyncHandler(async (req, res) => {
 
 exports.getProblem = asyncHandler(async (req, res) => {
   const problem = await Problem.findOne({ slug: req.params.slug, isPublished: true })
-    .select('-adminSolution')
+    .select({ adminSolution: 0 })
     .lean();
 
   if (!problem) return res.status(404).json({ success: false, error: 'Problem not found' });

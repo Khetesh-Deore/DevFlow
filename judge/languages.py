@@ -1,9 +1,18 @@
+import sys
+import shutil
+
+def get_python_cmd():
+    # Use the same python that's running this judge service
+    return sys.executable
+
+PYTHON_CMD = get_python_cmd()
+
 LANGUAGE_CONFIG = {
     "python": {
         "extension": ".py",
         "filename": "solution.py",
         "compile_cmd": None,
-        "run_cmd": ["python3", "{filepath}"],
+        "run_cmd": [PYTHON_CMD, "{filepath}"],
         "compiled_output": None
     },
     "cpp": {

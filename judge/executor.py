@@ -1,11 +1,14 @@
 import subprocess
 import time
 import os
+import sys
 
 from models import ExecuteRequest, ExecuteResponse, TestCaseResult
 from languages import get_language_config
 from sandbox import create_sandbox, write_code, cleanup_sandbox
 from comparator import get_verdict
+
+IS_WINDOWS = sys.platform == 'win32'
 
 
 def _resolve_cmd(cmd: list, filepath: str, outpath: str, dirpath: str) -> list:
@@ -25,7 +28,9 @@ async def execute_code(request: ExecuteRequest) -> ExecuteResponse:
     try:
         filepath = write_code(sandbox, config["filename"], request.code)
         dirpath = sandbox
-        outpath = os.path.join(sandbox, config["compiled_output"]) if config["compiled_output"] else ""
+        # On Windows, compiled binaries need .exe extension
+        binary_name = "solution.exe" if IS_WINDOWS and config["compiled_output"] else (config["compiled_output"] or "")
+        outpath = os.path.join(sandbox, binary_name) if binary_name else ""
 
         # Compilation step
         if config["compile_cmd"]:
@@ -68,9 +73,11 @@ async def execute_code(request: ExecuteRequest) -> ExecuteResponse:
             start = time.time()
 
             try:
+                # Ensure input ends with newline for readline-based code
+                tc_input = tc.input if tc.input.endswith('\n') else tc.input + '\n'
                 proc = subprocess.run(
                     run_cmd,
-                    input=tc.input.encode(),
+                    input=tc_input.encode(),
                     capture_output=True,
                     timeout=timeout_sec,
                     cwd=sandbox
