@@ -15,7 +15,6 @@ const useAuthStore = create((set) => ({
     localStorage.removeItem('token');
     set({ user: null, token: null, isAuthenticated: false });
   },
-
   setUser: (userData) => set({ user: userData }),
 
   setLoading: (bool) => set({ isLoading: bool })

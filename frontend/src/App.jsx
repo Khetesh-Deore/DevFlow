@@ -1,6 +1,9 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
+import { useEffect } from 'react';
+import { getMe } from './api/authApi';
+import useAuthStore from './store/authStore';
 
 import Navbar from './components/Layout/Navbar';
 import { ProtectedRoute, AdminRoute } from './components/Layout/ProtectedRoute';
@@ -47,6 +50,16 @@ const queryClient = new QueryClient({
 });
 
 export default function App() {
+  const { token, setUser, setLoading, logout } = useAuthStore();
+
+  useEffect(() => {
+    if (!token) return;
+    setLoading(true);
+    getMe()
+      .then(res => { setUser(res.data); setLoading(false); })
+      .catch(() => { logout(); setLoading(false); });
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>

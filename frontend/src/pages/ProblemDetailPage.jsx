@@ -132,9 +132,11 @@ export default function ProblemDetailPage() {
     try {
       const res = await submitCode({ code, language, problemId: problem._id });
       const submissionId = res.submissionId;
+      let pollCount = 0;
+      const MAX_POLLS = 30;
 
-      // Poll for result
       pollRef.current = setInterval(async () => {
+        pollCount++;
         try {
           const poll = await getSubmission(submissionId);
           const sub = poll.data;
@@ -147,9 +149,19 @@ export default function ProblemDetailPage() {
           clearInterval(pollRef.current);
           setIsSubmitting(false);
         }
+        if (pollCount >= MAX_POLLS) {
+          clearInterval(pollRef.current);
+          setIsSubmitting(false);
+          toast.error('Judging timed out. Please try again.');
+        }
       }, 2000);
     } catch (err) {
-      toast.error(err.message);
+      const msg = err.response?.data?.error || err.message;
+      if (err.response?.status === 503) {
+        toast.error('Judge service is warming up. Please retry in 30 seconds.');
+      } else {
+        toast.error(msg);
+      }
       setIsSubmitting(false);
     }
   };
@@ -278,6 +290,11 @@ export default function ProblemDetailPage() {
             className="bg-gray-800 text-white text-sm px-3 py-1.5 rounded-lg border border-gray-700 focus:outline-none">
             {LANGUAGES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
           </select>
+          {language === 'java' && (
+            <span className="text-xs text-yellow-400 bg-yellow-400/10 px-2 py-1 rounded-lg">
+              Java: class must be named <code className="font-mono">Main</code>
+            </span>
+          )}
         </div>
 
         {/* Editor */}

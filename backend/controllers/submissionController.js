@@ -3,7 +3,7 @@ const Problem = require('../models/Problem');
 const TestCase = require('../models/TestCase');
 const User = require('../models/User');
 const asyncHandler = require('../utils/asyncHandler');
-const { executeCode } = require('../services/judgeService');
+const { executeCode, checkJudgeHealth } = require('../services/judgeService');
 
 const processSubmission = async (submission, problem, userId) => {
   try {
@@ -87,6 +87,13 @@ exports.submitCode = asyncHandler(async (req, res) => {
 
   const problem = await Problem.findOne({ _id: problemId, isPublished: true });
   if (!problem) return res.status(404).json({ success: false, error: 'Problem not found' });
+
+  // Check judge health (handles Render free tier cold start)
+  try {
+    await checkJudgeHealth();
+  } catch {
+    return res.status(503).json({ success: false, error: 'Judge service is warming up. Please retry in 30 seconds.' });
+  }
 
   const submission = await Submission.create({
     userId: req.user.id,

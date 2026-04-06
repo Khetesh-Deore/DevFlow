@@ -1,22 +1,48 @@
 const mongoose = require('mongoose');
 
-// Increase mongoose buffer timeout
 mongoose.set('bufferTimeoutMS', 60000);
 
+let isConnecting = false;
+
 const connectDB = async () => {
+  if (isConnecting) return;
+  isConnecting = true;
+
   try {
-    const conn = await mongoose.connect(process.env.MONGO_URI, {
+    await mongoose.connect(process.env.MONGO_URI, {
       dbName: 'devflow',
       serverSelectionTimeoutMS: 30000,
       connectTimeoutMS: 30000,
-      socketTimeoutMS: 60000,
-      bufferCommands: true
+      socketTimeoutMS: 120000,
+      heartbeatFrequencyMS: 10000,
+      maxPoolSize: 5,
+      minPoolSize: 1,
+      retryWrites: true,
+      retryReads: true,
+      family: 4  // Force IPv4
     });
-    console.log(`✅ MongoDB connected: ${conn.connection.host}`);
+    console.log(`✅ MongoDB connected: ${mongoose.connection.host}`);
   } catch (error) {
     console.error(`❌ MongoDB connection failed: ${error.message}`);
-    process.exit(1);
+    isConnecting = false;
+    setTimeout(connectDB, 10000);
+    return;
   }
+  isConnecting = false;
 };
+
+mongoose.connection.on('disconnected', () => {
+  console.warn('MongoDB disconnected. Reconnecting...');
+  isConnecting = false;
+  setTimeout(connectDB, 10000);
+});
+
+mongoose.connection.on('error', (err) => {
+  console.error('MongoDB error:', err.message);
+});
+
+mongoose.connection.on('connected', () => {
+  console.log('✅ MongoDB connection established');
+});
 
 module.exports = connectDB;

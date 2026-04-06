@@ -9,6 +9,8 @@ const { Server } = require('socket.io');
 const { errorHandler } = require('./middleware/errorHandler');
 const { initContestSocket } = require('./sockets/contestSocket');
 const connectDB = require('./config/db');
+const dbCheck = require('./middleware/dbCheck');
+const requestLogger = require('./middleware/requestLogger');
 
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
@@ -20,16 +22,24 @@ const adminRoutes = require('./routes/admin');
 const app = express();
 
 app.use(helmet());
-app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
+app.use(cors({
+  origin: (origin, callback) => {
+    const allowed = [process.env.CLIENT_URL, 'http://localhost:5173', 'http://localhost:3000'];
+    if (!origin || allowed.includes(origin)) return callback(null, true);
+    callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(requestLogger);
 
-app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/users', userRoutes);
-app.use('/api/v1/problems', problemRoutes);
-app.use('/api/v1/submissions', submissionRoutes);
-app.use('/api/v1/contests', contestRoutes);
-app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/auth', dbCheck, authRoutes);
+app.use('/api/v1/users', dbCheck, userRoutes);
+app.use('/api/v1/problems', dbCheck, problemRoutes);
+app.use('/api/v1/submissions', dbCheck, submissionRoutes);
+app.use('/api/v1/contests', dbCheck, contestRoutes);
+app.use('/api/v1/admin', dbCheck, adminRoutes);
 
 app.use(errorHandler);
 
