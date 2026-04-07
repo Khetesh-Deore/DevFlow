@@ -11,6 +11,7 @@ const { initContestSocket } = require('./sockets/contestSocket');
 const connectDB = require('./config/db');
 const dbCheck = require('./middleware/dbCheck');
 const requestLogger = require('./middleware/requestLogger');
+const { apiLimiter } = require('./middleware/rateLimiter');
 
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
@@ -33,6 +34,7 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
+app.use('/api/v1', apiLimiter);
 
 app.use('/api/v1/auth', dbCheck, authRoutes);
 app.use('/api/v1/users', dbCheck, userRoutes);
