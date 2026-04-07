@@ -132,14 +132,25 @@ export default function ProblemDetailPage() {
     setIsRunning(true);
     setActiveResult('run');
     setRunResult(null);
-    try {
-      const res = await runCode({ code, language, input });
-      setRunResult(res.data);
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setIsRunning(false);
+
+    // Retry up to 3 times for judge cold start
+    let lastErr;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const res = await runCode({ code, language, input });
+        setRunResult(res.data);
+        setIsRunning(false);
+        return;
+      } catch (err) {
+        lastErr = err;
+        if (err.response?.status === 503 && attempt < 3) {
+          toast(`Judge warming up... retry ${attempt}/3`, { icon: '⏳' });
+          await new Promise(r => setTimeout(r, 8000));
+        } else break;
+      }
     }
+    toast.error(lastErr?.response?.data?.error || 'Judge unavailable. Try again in 30s.');
+    setIsRunning(false);
   };
 
   const handleSubmit = async () => {

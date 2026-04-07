@@ -16,12 +16,12 @@ jobs:
 
       - name: Ping Judge Service Health
         run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://devflow-1-r33z.onrender.com/health || echo "000")
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://devflow-judge.onrender.com/health || echo "000")
           echo "Judge status: $STATUS"
 
       - name: Warm up Judge (test execution)
         run: |
-          curl -s -X POST https://devflow-1-r33z.onrender.com/execute \
+          curl -s -X POST https://devflow-judge.onrender.com/execute \
             -H "Content-Type: application/json" \
             -H "X-API-Key: ${{ secrets.JUDGE_API_KEY }}" \
             -d '{"code":"print(1)","language":"python","testcases":[{"id":"ping","input":"","expected_output":"1"}],"time_limit":3000,"memory_limit":128,"mode":"run"}' \
