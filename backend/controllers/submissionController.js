@@ -139,26 +139,41 @@ exports.runCode = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, error: 'code and language are required' });
   }
 
-  const judgeResult = await executeCode({
-    code,
-    language,
-    testcases: [{ id: 'custom', input, expected_output: '' }],
-    time_limit: 5000,
-    memory_limit: 256,
-    mode: 'run'
-  });
+  try {
+    const judgeResult = await executeCode({
+      code,
+      language,
+      testcases: [{ id: 'custom', input, expected_output: '' }],
+      time_limit: 5000,
+      memory_limit: 256,
+      mode: 'run'
+    });
 
-  const r = judgeResult.results?.[0] || {};
-  res.status(200).json({
-    success: true,
-    data: {
-      status: judgeResult.overall_status,
-      stdout: r.stdout || '',
-      stderr: r.stderr || '',
-      timeTakenMs: r.time_taken_ms || 0,
-      compileError: judgeResult.compile_error || ''
-    }
-  });
+    const r = judgeResult.results?.[0] || {};
+    res.status(200).json({
+      success: true,
+      data: {
+        status: judgeResult.overall_status,
+        stdout: r.stdout || '',
+        stderr: r.stderr || '',
+        timeTakenMs: r.time_taken_ms || 0,
+        compileError: judgeResult.compile_error || ''
+      }
+    });
+  } catch (err) {
+    console.error('Run code error:', err.message);
+    res.status(503).json({
+      success: false,
+      error: 'Judge service is unavailable. Please retry in 30 seconds.',
+      data: {
+        status: 'runtime_error',
+        stdout: '',
+        stderr: err.message,
+        timeTakenMs: 0,
+        compileError: ''
+      }
+    });
+  }
 });
 
 exports.getSubmission = asyncHandler(async (req, res) => {

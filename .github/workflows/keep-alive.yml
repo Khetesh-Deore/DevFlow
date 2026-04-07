@@ -2,9 +2,8 @@ name: Keep Render Services Alive
 
 on:
   schedule:
-    # Runs every 14 minutes
-    - cron: '*/1 * * * *'
-  workflow_dispatch: # Allow manual trigger
+    - cron: '*/14 * * * *'
+  workflow_dispatch:
 
 jobs:
   ping:
@@ -12,10 +11,18 @@ jobs:
     steps:
       - name: Ping Backend API
         run: |
-          curl -s -o /dev/null -w "Backend: %{http_code}\n" \
-            https://devflow-nolh.onrender.com/api/v1/auth/me || true
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://devflow-nolh.onrender.com/api/v1/auth/me || echo "000")
+          echo "Backend status: $STATUS"
 
-      - name: Ping Judge Service
+      - name: Ping Judge Service Health
         run: |
-          curl -s -o /dev/null -w "Judge: %{http_code}\n" \
-            https://devflow-1-r33z.onrender.com/health || true
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://devflow-1-r33z.onrender.com/health || echo "000")
+          echo "Judge status: $STATUS"
+
+      - name: Warm up Judge (test execution)
+        run: |
+          curl -s -X POST https://devflow-1-r33z.onrender.com/execute \
+            -H "Content-Type: application/json" \
+            -H "X-API-Key: ${{ secrets.JUDGE_API_KEY }}" \
+            -d '{"code":"print(1)","language":"python","testcases":[{"id":"ping","input":"","expected_output":"1"}],"time_limit":3000,"memory_limit":128,"mode":"run"}' \
+            -o /dev/null -w "Judge warm-up: %{http_code}\n" || true
