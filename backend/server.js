@@ -25,8 +25,23 @@ const app = express();
 app.use(helmet());
 app.use(cors({
   origin: (origin, callback) => {
-    const allowed = [process.env.CLIENT_URL, 'http://localhost:5173', 'http://localhost:3000'];
-    if (!origin || allowed.includes(origin)) return callback(null, true);
+    if (!origin) return callback(null, true);
+    const allowed = [
+      process.env.CLIENT_URL,
+      'http://localhost:5173',
+      'http://localhost:3000',
+      'https://devflow26.vercel.app'
+    ];
+    if (
+      allowed.includes(origin) ||
+      origin.includes('ngrok') ||
+      origin.includes('ngrok-free') ||
+      origin.includes('vercel.app') ||
+      /^http:\/\/192\.168\.\d+\.\d+(:\d+)?$/.test(origin) ||
+      /^http:\/\/10\.\d+\.\d+\.\d+(:\d+)?$/.test(origin)
+    ) {
+      return callback(null, true);
+    }
     callback(new Error('Not allowed by CORS'));
   },
   credentials: true

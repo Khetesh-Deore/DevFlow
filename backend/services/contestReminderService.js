@@ -8,6 +8,10 @@ const { sendContestReminderEmail } = require('./emailService');
 const remindersSent = new Set();
 
 const sendContestReminders = async () => {
+  // Skip if DB not connected
+  const mongoose = require('mongoose');
+  if (mongoose.connection.readyState !== 1) return;
+
   try {
     const now = new Date();
     const in30min = new Date(now.getTime() + 30 * 60 * 1000);
