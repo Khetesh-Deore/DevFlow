@@ -1,0 +1,39 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'asia-south1-docker.pkg.dev/gen-lang-client-0010578590/cloud-run-source-deploy/khetesh-deore-devflow/devflow-judge:latest'
+      - '-f'
+      - 'judge/Dockerfile'
+      - 'judge'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'asia-south1-docker.pkg.dev/gen-lang-client-0010578590/cloud-run-source-deploy/khetesh-deore-devflow/devflow-judge:latest'
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'devflow-judge'
+      - '--image'
+      - 'asia-south1-docker.pkg.dev/gen-lang-client-0010578590/cloud-run-source-deploy/khetesh-deore-devflow/devflow-judge:latest'
+      - '--region'
+      - 'asia-south1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--port'
+      - '8000'
+      - '--memory'
+      - '1Gi'
+      - '--cpu'
+      - '1'
+      - '--timeout'
+      - '120'
+
+images:
+  - 'asia-south1-docker.pkg.dev/gen-lang-client-0010578590/cloud-run-source-deploy/khetesh-deore-devflow/devflow-judge:latest'
