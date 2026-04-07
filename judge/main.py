@@ -80,3 +80,8 @@ async def execute(request: ExecuteRequest):
     except Exception as e:
         print(f"❌ [JUDGE] Exception: {e}")
         return JSONResponse(status_code=500, content={"error": f"Judge error: {str(e)}"})
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8080))
+    uvicorn.run("main:app", host="0.0.0.0", port=port)
