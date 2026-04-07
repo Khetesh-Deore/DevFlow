@@ -59,6 +59,10 @@ initContestSocket(io);
 
 connectDB();
 
+// Start contest reminder cron
+const { startContestReminderCron } = require('./services/contestReminderService');
+startContestReminderCron();
+
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 

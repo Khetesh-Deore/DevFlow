@@ -1,8 +1,8 @@
 const crypto = require('crypto');
 const Joi = require('joi');
-const nodemailer = require('nodemailer');
 const User = require('../models/User');
 const asyncHandler = require('../utils/asyncHandler');
+const { sendWelcomeEmail, sendPasswordResetEmail } = require('../services/emailService');
 
 const sendTokenResponse = (user, statusCode, res) => {
   const token = user.getSignedJwtToken();
@@ -45,6 +45,10 @@ exports.register = asyncHandler(async (req, res) => {
   if (rollExists) return res.status(400).json({ success: false, error: 'Roll number already registered' });
 
   const user = await User.create({ name, email, password, rollNumber, batch, branch });
+
+  // Send welcome email (non-blocking)
+  sendWelcomeEmail(user).catch(() => {});
+
   sendTokenResponse(user, 201, res);
 });
 
@@ -83,18 +87,7 @@ exports.forgotPassword = asyncHandler(async (req, res) => {
   const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
 
   try {
-    const transporter = nodemailer.createTransport({
-      service: process.env.EMAIL_SERVICE,
-      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
-    });
-
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: user.email,
-      subject: 'Password Reset Request',
-      text: `You requested a password reset. Click the link to reset your password:\n\n${resetUrl}\n\nThis link expires in 1 hour.`
-    });
-
+    await sendPasswordResetEmail(user, resetUrl);
     res.status(200).json({ success: true, message: 'Email sent' });
   } catch (err) {
     user.resetPasswordToken = undefined;
