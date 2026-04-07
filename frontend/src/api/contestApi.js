@@ -49,3 +49,8 @@ export const toggleContestPublish = async (id) => {
   const res = await api.patch(`/contests/${id}/publish`);
   return res.data;
 };
+
+export const getContestReport = async (slug) => {
+  const res = await api.get(`/contests/${slug}/report`);
+  return res.data;
+};

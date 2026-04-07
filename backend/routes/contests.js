@@ -4,7 +4,7 @@ const router = express.Router();
 const {
   getContests, getContest, createContest, updateContest, deleteContest,
   togglePublish, registerForContest, submitInContest,
-  getContestLeaderboard, getContestSubmissions
+  getContestLeaderboard, getContestSubmissions, getContestReport
 } = require('../controllers/contestController');
 
 const { protect, authorize } = require('../middleware/auth');
@@ -33,6 +33,7 @@ router.post('/:id/register', protect, registerForContest);
 router.post('/:slug/submit', protect, submissionLimiter, submitInContest);
 router.get('/:slug/leaderboard', getContestLeaderboard);
 router.get('/:slug/my-submissions', protect, getContestSubmissions);
+router.get('/:slug/report', ...admin, getContestReport);
 
 // Admin
 router.post('/', ...admin, createContest);

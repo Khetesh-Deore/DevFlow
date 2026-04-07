@@ -192,6 +192,11 @@ export default function ContestDetailPage() {
   const isRegistered = data?.isRegistered || false;
   const status = contest?.status;
 
+  // Cache endTime for instant timer on problem pages
+  useEffect(() => {
+    if (contest?.endTime) localStorage.setItem(`contest_end_${slug}`, contest.endTime);
+  }, [contest?.endTime, slug]);
+
   const timer = useCountdown(status === 'live' ? contest?.endTime : contest?.startTime);
   const isRedTimer = status === 'live' && timer.total < 600000;
   const isWarningTimer = status === 'live' && timer.total < 1800000;
@@ -228,7 +233,14 @@ export default function ContestDetailPage() {
 
   const { mutate: doRegister, isLoading: registering } = useMutation({
     mutationFn: () => registerForContest(contest._id),
-    onSuccess: () => { toast.success('Registered!'); qc.invalidateQueries(['contest', slug]); },
+    onSuccess: () => {
+      // Cache endTime for instant timer on problem page
+      if (contest?.endTime) {
+        localStorage.setItem(`contest_end_${slug}`, contest.endTime);
+      }
+      toast.success('Registered!');
+      qc.invalidateQueries(['contest', slug]);
+    },
     onError: e => toast.error(e.response?.data?.error || e.message)
   });
 

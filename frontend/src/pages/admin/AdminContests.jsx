@@ -1,7 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Eye, EyeOff, Edit2, Trash2, Plus } from 'lucide-react';
-import { deleteContest, toggleContestPublish } from '../../api/contestApi';
+import { Eye, EyeOff, Edit2, Trash2, Plus, Download, Loader2 } from 'lucide-react';
+import { deleteContest, toggleContestPublish, getContestReport } from '../../api/contestApi';
+import { generateContestPDF } from '../../utils/generateContestReport';
 import { getAdminStats } from '../../api/adminApi';
 import api from '../../api/axiosConfig';
 import toast from 'react-hot-toast';
@@ -9,6 +11,20 @@ import { formatDate } from '../../utils/formatTime';
 
 export default function AdminContests() {
   const qc = useQueryClient();
+  const [generatingReport, setGeneratingReport] = useState(null);
+
+  const handleDownloadReport = async (slug, title) => {
+    setGeneratingReport(slug);
+    try {
+      const res = await getContestReport(slug);
+      generateContestPDF(res.data);
+      toast.success('Report downloaded');
+    } catch (err) {
+      toast.error('Failed to generate report');
+    } finally {
+      setGeneratingReport(null);
+    }
+  };
 
   // Use admin endpoint to get ALL contests (published + draft)
   const { data, isLoading } = useQuery({
@@ -84,6 +100,15 @@ export default function AdminContests() {
                           className={`p-1.5 rounded-lg ${c.isPublished ? 'text-yellow-400 hover:bg-yellow-400/10' : 'text-green-400 hover:bg-green-400/10'}`}
                           title={c.isPublished ? 'Unpublish' : 'Publish'}>
                           {c.isPublished ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
+                        <button
+                          onClick={() => handleDownloadReport(c.slug, c.title)}
+                          disabled={generatingReport === c.slug}
+                          className="p-1.5 text-purple-400 hover:bg-purple-400/10 rounded-lg disabled:opacity-50"
+                          title="Download PDF Report">
+                          {generatingReport === c.slug
+                            ? <Loader2 size={14} className="animate-spin" />
+                            : <Download size={14} />}
                         </button>
                         <button onClick={() => remove(c._id)}
                           className="p-1.5 text-red-400 hover:bg-red-400/10 rounded-lg" title="Delete">

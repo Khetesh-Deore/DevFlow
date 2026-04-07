@@ -267,6 +267,65 @@ exports.getContestLeaderboard = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: leaderboard });
 });
 
+exports.getContestReport = asyncHandler(async (req, res) => {
+  const ContestSubmission = require('../models/ContestSubmission');
+  const ContestRegistration = require('../models/ContestRegistration');
+
+  // Try finding by slug OR by _id
+  const contest = await Contest.findOne({
+    $or: [
+      { slug: req.params.slug },
+      ...(require('mongoose').Types.ObjectId.isValid(req.params.slug) ? [{ _id: req.params.slug }] : [])
+    ]
+  }).populate('problems.problemId', 'title difficulty');
+
+  if (!contest) return res.status(404).json({ success: false, error: 'Contest not found' });
+
+  const leaderboard = await computeLeaderboard(contest);
+
+  const registrations = await ContestRegistration.find({ contestId: contest._id });
+  const totalRegistered = registrations.length;
+
+  // Count unique participants (users who submitted at least once)
+  const uniqueParticipants = await ContestSubmission.distinct('userId', { contestId: contest._id });
+
+  const problemStats = [];
+  for (const p of contest.problems) {
+    const pid = p.problemId?._id;
+    if (!pid) continue;
+    const [solvers, attempts] = await Promise.all([
+      ContestSubmission.countDocuments({ contestId: contest._id, problemId: pid, status: 'accepted' }),
+      ContestSubmission.countDocuments({ contestId: contest._id, problemId: pid })
+    ]);
+    problemStats.push({
+      title: p.problemId?.title || 'Unknown',
+      label: p.label || String(p.order),
+      points: p.points,
+      solvers,
+      attempts
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    data: {
+      contest: {
+        title: contest.title,
+        slug: contest.slug,
+        type: contest.type,
+        startTime: contest.startTime,
+        endTime: contest.endTime,
+        duration: contest.duration,
+        totalRegistered,
+        totalParticipants: uniqueParticipants.length,
+        totalProblems: contest.problems.length
+      },
+      problemStats,
+      leaderboard
+    }
+  });
+});
+
 exports.getContestSubmissions = asyncHandler(async (req, res) => {
   const contest = await Contest.findOne({ slug: req.params.slug });
   if (!contest) return res.status(404).json({ success: false, error: 'Contest not found' });
