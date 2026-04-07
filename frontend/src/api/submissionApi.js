@@ -19,3 +19,8 @@ export const getMySubmissions = async (problemId) => {
   const res = await api.get('/submissions', { params: { problemId } });
   return res.data;
 };
+
+export const getSubmissionHistory = async (params) => {
+  const res = await api.get('/submissions/history', { params });
+  return res.data;
+};

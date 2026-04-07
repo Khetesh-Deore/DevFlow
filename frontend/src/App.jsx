@@ -22,6 +22,7 @@ import ContestDetailPage from './pages/ContestDetailPage';
 import ContestProblemPage from './pages/ContestProblemPage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import ProfilePage from './pages/ProfilePage';
+import HistoryPage from './pages/HistoryPage';
 
 // Admin pages
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -83,7 +84,7 @@ export default function App() {
             <Route path="/contests/:contestSlug/problems/:problemSlug" element={<ContestProblemPage />} />
             <Route path="/leaderboard" element={<LeaderboardPage />} />
             <Route path="/profile/:username" element={<ProfilePage />} />
-          </Route>
+            <Route path="/history" element={<HistoryPage />} />          </Route>
 
           {/* Admin */}
           <Route element={<AdminRoute />}>

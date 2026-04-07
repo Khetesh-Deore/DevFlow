@@ -11,9 +11,13 @@ const sendTokenResponse = (user, statusCode, res) => {
     token,
     user: {
       id: user._id,
+      _id: user._id,
       name: user.name,
       email: user.email,
       role: user.role,
+      rollNumber: user.rollNumber,
+      batch: user.batch,
+      branch: user.branch,
       stats: user.stats
     }
   });
@@ -65,7 +69,7 @@ exports.logout = asyncHandler(async (req, res) => {
 });
 
 exports.getMe = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.user.id);
+  const user = await User.findById(req.user.id).select('-password -verifyToken -resetPasswordToken -resetPasswordExpire');
   res.status(200).json({ success: true, data: user });
 });
 

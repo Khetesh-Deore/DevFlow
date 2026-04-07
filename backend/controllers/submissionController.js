@@ -50,24 +50,46 @@ const processSubmission = async (submission, problem, userId) => {
     // Update problem stats
     await Problem.findByIdAndUpdate(problem._id, { $inc: { totalSubmissions: 1 } });
 
-    // Update user stats
+    // Update user total submissions always
     await User.findByIdAndUpdate(userId, { $inc: { 'stats.totalSubmissions': 1 } });
 
     if (judgeResult.overall_status === 'accepted') {
       await Problem.findByIdAndUpdate(problem._id, { $inc: { totalAccepted: 1 } });
       await Problem.updateAcceptanceRate(problem._id);
 
+      // Always increment acceptedSubmissions
+      await User.findByIdAndUpdate(userId, { $inc: { 'stats.acceptedSubmissions': 1 } });
+
       const user = await User.findById(userId);
       const alreadySolved = user.solvedProblems.some(id => id.toString() === problem._id.toString());
 
       if (!alreadySolved) {
         const diffMap = { Easy: 'easySolved', Medium: 'mediumSolved', Hard: 'hardSolved' };
+
+        // Update streak
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const lastSolved = user.stats.lastSolvedDate ? new Date(user.stats.lastSolvedDate) : null;
+        let streakInc = 0;
+        if (!lastSolved) {
+          streakInc = 1;
+        } else {
+          const lastDay = new Date(lastSolved);
+          lastDay.setHours(0, 0, 0, 0);
+          const diff = Math.floor((today - lastDay) / 86400000);
+          if (diff === 1) streakInc = 1;       // consecutive day
+          else if (diff === 0) streakInc = 0;  // same day
+          else streakInc = -(user.stats.streak || 0) + 1; // reset to 1
+        }
+
         await User.findByIdAndUpdate(userId, {
           $addToSet: { solvedProblems: problem._id },
           $inc: {
             'stats.totalSolved': 1,
-            [`stats.${diffMap[problem.difficulty]}`]: 1
-          }
+            [`stats.${diffMap[problem.difficulty]}`]: 1,
+            'stats.streak': streakInc
+          },
+          $set: { 'stats.lastSolvedDate': new Date() }
         });
       }
     }

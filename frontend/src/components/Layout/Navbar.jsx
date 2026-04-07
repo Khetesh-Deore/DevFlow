@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Code2, Menu, X, ChevronDown, LayoutDashboard, User, ShieldCheck, LogOut } from 'lucide-react';
+import { Code2, Menu, X, ChevronDown, LayoutDashboard, User, ShieldCheck, LogOut, History } from 'lucide-react';
 import useAuthStore, { selectIsAdmin } from '../../store/authStore';
 import { logoutUser } from '../../api/authApi';
 
@@ -93,7 +93,11 @@ export default function Navbar() {
                     className="flex items-center gap-2 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white">
                     <LayoutDashboard size={14} /> Dashboard
                   </Link>
-                  <Link to={`/profile/${user?.id}`} onClick={() => setDropdownOpen(false)}
+                  <Link to="/history" onClick={() => setDropdownOpen(false)}
+                    className="flex items-center gap-2 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white">
+                    <History size={14} /> Submission History
+                  </Link>
+                  <Link to={`/profile/${user?.rollNumber || user?.id}`} onClick={() => setDropdownOpen(false)}
                     className="flex items-center gap-2 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white">
                     <User size={14} /> Profile
                   </Link>
@@ -142,7 +146,9 @@ export default function Navbar() {
             <div className="flex flex-col gap-3">
               <Link to="/dashboard" onClick={() => setMobileOpen(false)}
                 className="text-sm text-gray-300 hover:text-white">Dashboard</Link>
-              <Link to={`/profile/${user?.id}`} onClick={() => setMobileOpen(false)}
+              <Link to="/history" onClick={() => setMobileOpen(false)}
+                className="text-sm text-gray-300 hover:text-white">Submission History</Link>
+              <Link to={`/profile/${user?.rollNumber || user?.id}`} onClick={() => setMobileOpen(false)}
                 className="text-sm text-gray-300 hover:text-white">Profile</Link>
               {isAdmin && (
                 <Link to="/admin" onClick={() => setMobileOpen(false)}
