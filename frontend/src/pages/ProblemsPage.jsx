@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Search, CheckCircle2, MinusCircle, Filter, X } from 'lucide-react';
 import { getProblems, getTags } from '../api/problemApi';
+import { ProblemListSkeleton } from '../components/Common/LoadingSkeleton';
 import useAuthStore from '../store/authStore';
 
 const DIFFICULTIES = ['Easy', 'Medium', 'Hard'];
@@ -157,11 +158,7 @@ export default function ProblemsPage() {
           {/* Table */}
           <div className="flex-1 min-w-0">
             {isLoading ? (
-              <div className="flex flex-col gap-2">
-                {Array.from({ length: 10 }).map((_, i) => (
-                  <div key={i} className="h-12 bg-gray-800 rounded-lg animate-pulse" />
-                ))}
-              </div>
+              <ProblemListSkeleton />
             ) : problems.length === 0 ? (
               <div className="text-center py-20 text-gray-500">No problems found</div>
             ) : (
