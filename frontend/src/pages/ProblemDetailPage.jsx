@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronDown, ChevronRight, Clock, ArrowLeft, Play, Send, ChevronUp, Terminal } from 'lucide-react';
+import { ChevronDown, ChevronRight, Clock, ArrowLeft, Play, Send, ChevronUp, Terminal, FileText, Code2 } from 'lucide-react';
 import { getProblem } from '../api/problemApi';
 import { submitCode, runCode, getSubmission, getMySubmissions } from '../api/submissionApi';
 import CodeEditor, { DEFAULT_TEMPLATES } from '../components/Editor/CodeEditor';
@@ -81,6 +81,7 @@ function SubmissionHistory({ problemId }) {
 export default function ProblemDetailPage() {
   const { slug } = useParams();
   const [activeTab, setActiveTab] = useState('description');
+  const [mobilePanel, setMobilePanel] = useState('problem'); // 'problem' | 'code'
   const [language, setLanguage] = useState('python');
   const [code, setCode] = useState(DEFAULT_TEMPLATES.python);
   const [customInput, setCustomInput] = useState('');
@@ -210,10 +211,25 @@ export default function ProblemDetailPage() {
   const { sampleTestCases = [] } = problem;
 
   return (
-    <div className="h-[calc(100vh-56px)] flex bg-gray-950 text-white overflow-hidden">
+    <div className="flex flex-col bg-gray-950 text-white" style={{ height: 'calc(100vh - 56px)' }}>
+
+      {/* Mobile top tabs */}
+      <div className="flex md:hidden border-b border-gray-800 bg-gray-900 shrink-0">
+        <button onClick={() => setMobilePanel('problem')}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm transition-colors ${mobilePanel === 'problem' ? 'text-white border-b-2 border-blue-500' : 'text-gray-400'}`}>
+          <FileText size={14} /> Problem
+        </button>
+        <button onClick={() => setMobilePanel('code')}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm transition-colors ${mobilePanel === 'code' ? 'text-white border-b-2 border-blue-500' : 'text-gray-400'}`}>
+          <Code2 size={14} /> Code
+        </button>
+      </div>
+
+      {/* Main content */}
+      <div className="flex flex-1 overflow-hidden">
 
       {/* LEFT PANEL */}
-      <div className="w-full md:w-[45%] flex flex-col border-r border-gray-800 overflow-hidden">
+      <div className={`${mobilePanel === 'problem' ? 'flex' : 'hidden'} md:flex w-full md:w-[45%] flex-col border-r border-gray-800 overflow-hidden`}>
 
         {/* Tabs */}
         <div className="flex border-b border-gray-800 bg-gray-900 shrink-0">
@@ -299,7 +315,7 @@ export default function ProblemDetailPage() {
       </div>
 
       {/* RIGHT PANEL */}
-      <div className="hidden md:flex flex-col flex-1 overflow-hidden">
+      <div className={`${mobilePanel === 'code' ? 'flex' : 'hidden'} md:flex flex-col flex-1 overflow-hidden`}>
 
         {/* Language selector */}
         <div className="flex items-center gap-3 px-4 py-2 bg-gray-900 border-b border-gray-800 shrink-0">
@@ -377,6 +393,7 @@ export default function ProblemDetailPage() {
         {activeResult === 'submit' && (
           <SubmissionPanel submission={submissionResult} isLoading={isSubmitting} />
         )}
+      </div>
       </div>
     </div>
   );
