@@ -6,11 +6,11 @@ export default function HomePage() {
     <div className="min-h-screen bg-gray-950 text-white">
       
       {/* Hero Section */}
-      <section className="relative overflow-hidden">
+      <section className="relative overflow-hidden min-h-screen flex items-center">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-purple-600/10 to-pink-600/10" />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 sm:py-32">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
           <div className="text-center">
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold mb-6 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold mb-6 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent animate-fade-in">
               DevFlow
             </h1>
             <p className="text-xl sm:text-2xl text-gray-300 mb-4 max-w-3xl mx-auto">
@@ -19,7 +19,7 @@ export default function HomePage() {
             <p className="text-lg text-gray-400 mb-10 max-w-2xl mx-auto">
               Practice problems, compete in live contests, and track your progress. Built for college students who want to excel in coding competitions.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
               <Link to="/problems" className="bg-blue-600 px-8 py-4 rounded-lg hover:bg-blue-700 font-semibold text-lg transition-colors shadow-lg shadow-blue-600/30">
                 Start Solving Problems
               </Link>
@@ -27,30 +27,58 @@ export default function HomePage() {
                 View Live Contests
               </Link>
             </div>
+            
+            {/* Scroll indicator */}
+            {/* <div className="flex flex-col items-center gap-2 text-gray-500 animate-bounce">
+              <span className="text-xs uppercase tracking-wider">Scroll to explore</span>
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+              </svg>
+            </div> */}
           </div>
         </div>
       </section>
 
-      {/* Stats Section */}
-      {/* <section className="py-16 border-y border-gray-800 bg-gray-900/50">
+      {/* How It Works Section */}
+      {/* <section className="py-20 border-y border-gray-800 bg-gray-900/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            <div>
-              <div className="text-4xl font-bold text-blue-400 mb-2">500+</div>
-              <div className="text-gray-400 text-sm">Problems</div>
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold mb-4">How It Works</h2>
+            <p className="text-gray-400 text-lg">Get started in three simple steps</p>
+          </div>
+          
+          <div className="grid md:grid-cols-3 gap-8">
+            
+            <div className="relative">
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-8 hover:border-blue-600/50 transition-colors h-full">
+                <div className="w-16 h-16 bg-blue-600/10 rounded-full flex items-center justify-center mb-6 mx-auto">
+                  <span className="text-3xl font-bold text-blue-400">1</span>
+                </div>
+                <h3 className="text-xl font-semibold mb-3 text-center">Create Account</h3>
+                <p className="text-gray-400 text-center">Sign up with your college email and create your profile. It's free and takes less than a minute.</p>
+              </div>
+              <div className="hidden md:block absolute top-1/2 -right-4 w-8 h-0.5 bg-gradient-to-r from-blue-600 to-purple-600" />
             </div>
-            <div>
-              <div className="text-4xl font-bold text-purple-400 mb-2">50+</div>
-              <div className="text-gray-400 text-sm">Contests</div>
+
+            <div className="relative">
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-8 hover:border-purple-600/50 transition-colors h-full">
+                <div className="w-16 h-16 bg-purple-600/10 rounded-full flex items-center justify-center mb-6 mx-auto">
+                  <span className="text-3xl font-bold text-purple-400">2</span>
+                </div>
+                <h3 className="text-xl font-semibold mb-3 text-center">Practice & Learn</h3>
+                <p className="text-gray-400 text-center">Browse hundreds of problems, write code in your favorite language, and get instant feedback.</p>
+              </div>
+              <div className="hidden md:block absolute top-1/2 -right-4 w-8 h-0.5 bg-gradient-to-r from-purple-600 to-pink-600" />
             </div>
-            <div>
-              <div className="text-4xl font-bold text-pink-400 mb-2">5</div>
-              <div className="text-gray-400 text-sm">Languages</div>
+
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-8 hover:border-pink-600/50 transition-colors h-full">
+              <div className="w-16 h-16 bg-pink-600/10 rounded-full flex items-center justify-center mb-6 mx-auto">
+                <span className="text-3xl font-bold text-pink-400">3</span>
+              </div>
+              <h3 className="text-xl font-semibold mb-3 text-center">Compete & Win</h3>
+              <p className="text-gray-400 text-center">Join live contests, climb the leaderboard, and showcase your skills to potential employers.</p>
             </div>
-            <div>
-              <div className="text-4xl font-bold text-green-400 mb-2">24/7</div>
-              <div className="text-gray-400 text-sm">Availability</div>
-            </div>
+
           </div>
         </div>
       </section> */}
