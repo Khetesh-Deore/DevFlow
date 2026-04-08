@@ -23,7 +23,9 @@ const submissionSchema = new mongoose.Schema(
         stdout:      String,
         stderr:      String,
         expected:    String,
-        got:         String
+        got:         String,
+        input:       String,
+        isSample:    Boolean
       }
     ],
     passedTestCases: { type: Number, default: 0 },

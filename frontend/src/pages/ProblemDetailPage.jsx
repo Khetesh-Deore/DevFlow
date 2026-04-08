@@ -82,6 +82,7 @@ export default function ProblemDetailPage() {
   const [activeTab, setActiveTab]         = useState('description');
   const [mobilePanel, setMobilePanel]     = useState('problem');
   const [activeBottomTab, setActiveBottomTab] = useState('testcase'); // testcase | result
+  const [selectedTestCase, setSelectedTestCase] = useState(0);
   const [customInput, setCustomInput]     = useState('');
   const [isRunning, setIsRunning]         = useState(false);
   const [isSubmitting, setIsSubmitting]   = useState(false);
@@ -323,14 +324,50 @@ export default function ProblemDetailPage() {
             <div className="flex-1 overflow-y-auto p-4">
               {activeBottomTab === 'testcase' && (
                 <div>
-                  <p className="text-xs text-gray-400 mb-2">Custom Input (stdin)</p>
-                  <textarea
-                    rows={5}
-                    value={customInput}
-                    onChange={e => setCustomInput(e.target.value)}
-                    placeholder="Enter custom input..."
-                    className="w-full bg-gray-800 text-white text-sm font-mono px-3 py-2 rounded-lg border border-gray-700 focus:outline-none resize-none"
-                  />
+                  {/* Test case tabs */}
+                  <div className="flex gap-2 mb-3 overflow-x-auto pb-2">
+                    {sampleTestCases.map((tc, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setSelectedTestCase(i)}
+                        className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-colors shrink-0 ${
+                          selectedTestCase === i
+                            ? 'bg-gray-700 text-white'
+                            : 'bg-gray-800 hover:bg-gray-750 text-gray-400'
+                        }`}
+                      >
+                        Case {i + 1}
+                      </button>
+                    ))}
+                    <button className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-400 text-xs rounded-lg font-medium transition-colors shrink-0">
+                      +
+                    </button>
+                  </div>
+
+                  {/* Show selected test case input */}
+                  {sampleTestCases[selectedTestCase] && (
+                    <div>
+                      <p className="text-xs text-gray-400 mb-2">nums =</p>
+                      <div className="bg-gray-800 rounded-lg p-3">
+                        <pre className="text-sm font-mono text-white whitespace-pre-wrap">
+                          {sampleTestCases[selectedTestCase].input}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+
+                  {sampleTestCases.length === 0 && (
+                    <div>
+                      <p className="text-xs text-gray-400 mb-2">Custom Input (stdin)</p>
+                      <textarea
+                        rows={5}
+                        value={customInput}
+                        onChange={e => setCustomInput(e.target.value)}
+                        placeholder="Enter custom input..."
+                        className="w-full bg-gray-800 text-white text-sm font-mono px-3 py-2 rounded-lg border border-gray-700 focus:outline-none resize-none"
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -351,8 +388,24 @@ export default function ProblemDetailPage() {
                       {runResult.compileError
                         ? <pre className="text-xs text-red-400 font-mono whitespace-pre-wrap">{runResult.compileError}</pre>
                         : <>
-                            {runResult.stdout && <div className="mb-2"><p className="text-xs text-gray-500 mb-1">Output:</p><pre className="bg-gray-800 rounded p-2 text-xs font-mono text-gray-200 whitespace-pre-wrap">{runResult.stdout}</pre></div>}
-                            {runResult.stderr && <div><p className="text-xs text-gray-500 mb-1">Stderr:</p><pre className="bg-gray-800 rounded p-2 text-xs font-mono text-red-400 whitespace-pre-wrap">{runResult.stderr}</pre></div>}
+                            {runResult.stdout && (
+                              <div className="mb-3">
+                                <p className="text-xs text-gray-500 mb-1">Output:</p>
+                                <pre className="bg-gray-800 rounded p-2 text-xs font-mono text-gray-200 whitespace-pre-wrap">{runResult.stdout}</pre>
+                              </div>
+                            )}
+                            {sampleTestCases[selectedTestCase]?.expectedOutput && (
+                              <div className="mb-3">
+                                <p className="text-xs text-gray-500 mb-1">Expected:</p>
+                                <pre className="bg-gray-800 rounded p-2 text-xs font-mono text-gray-200 whitespace-pre-wrap">{sampleTestCases[selectedTestCase].expectedOutput}</pre>
+                              </div>
+                            )}
+                            {runResult.stderr && (
+                              <div>
+                                <p className="text-xs text-gray-500 mb-1">Stderr:</p>
+                                <pre className="bg-gray-800 rounded p-2 text-xs font-mono text-red-400 whitespace-pre-wrap">{runResult.stderr}</pre>
+                              </div>
+                            )}
                           </>
                       }
                     </div>

@@ -200,11 +200,21 @@ const processContestSubmission = async (submission, contest, problem, contestPro
     submission.passedTestCases = judgeResult.passed || 0;
     submission.totalTestCases = Math.max(judgeResult.total || 0, testCases.length);
     submission.compileError = judgeResult.compile_error || '';
-    submission.testCaseResults = (judgeResult.results || []).map(r => ({
-      testCaseId: r.testcase_id, status: r.status, timeTakenMs: r.time_taken_ms,
-      memoryUsedKb: r.memory_used_kb, stdout: r.stdout, stderr: r.stderr,
-      expected: r.expected, got: r.got
-    }));
+    submission.testCaseResults = (judgeResult.results || []).map(r => {
+      const tc = testCases.find(t => t._id.toString() === r.testcase_id);
+      return {
+        testCaseId: r.testcase_id,
+        status: r.status,
+        timeTakenMs: r.time_taken_ms,
+        memoryUsedKb: r.memory_used_kb,
+        stdout: r.stdout,
+        stderr: r.stderr,
+        expected: r.expected,
+        got: r.got,
+        input: tc?.isSample ? tc.input : '',
+        isSample: tc?.isSample || false
+      };
+    });
     submission.timeTakenMs = Math.max(...(judgeResult.results || []).map(r => r.time_taken_ms || 0), 0);
     await submission.save();
 
