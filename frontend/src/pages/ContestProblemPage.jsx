@@ -79,6 +79,11 @@ function MiniLeaderboard({ slug, currentUserId }) {
 function ProblemNav({ contest, currentSlug, mySubmissions = [] }) {
   const navigate = useNavigate();
   if (!contest?.problems?.length) return null;
+  
+  const handleProblemClick = (problemSlug) => {
+    navigate(`/contests/${contest.slug}/problems/${problemSlug}`);
+  };
+  
   return (
     <div className="flex flex-col gap-1 p-2">
       {contest.problems.map(p => {
@@ -92,7 +97,7 @@ function ProblemNav({ contest, currentSlug, mySubmissions = [] }) {
 
         return (
           <button key={p._id}
-            onClick={() => navigate(`/contests/${contest.slug}/problems/${p.problemId?.slug}`)}
+            onClick={() => handleProblemClick(p.problemId?.slug)}
             className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-colors ${
               isCurrent ? 'bg-blue-600 text-white'
               : accepted ? 'bg-green-400/10 text-green-400 hover:bg-green-400/20'
@@ -168,6 +173,18 @@ export default function ContestProblemPage() {
     if (problem?.sampleTestCases?.[0]?.input) setCustomInput(problem.sampleTestCases[0].input);
     else if (problem?.examples?.[0]?.input) setCustomInput(problem.examples[0].input);
   }, [problem?._id]);
+
+  // Reset state when switching problems
+  useEffect(() => {
+    setRunResult(null);
+    setSubmissionResult(null);
+    setActiveResult('testcase');
+    setSelectedTestCase(0);
+    setIsRunning(false);
+    setIsSubmitting(false);
+    setRightPanel('editor'); // Close problem panel when switching
+    clearInterval(pollRef.current);
+  }, [problemSlug]);
 
   const contest = contestData?.data;
   const isEnded = contest?.status === 'ended';
