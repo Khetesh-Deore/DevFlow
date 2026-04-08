@@ -95,6 +95,7 @@ export default function App() {
             <Route path="/admin/problems/:id/testcases" element={<AdminTestCases />} />
             <Route path="/admin/contests" element={<AdminContests />} />
             <Route path="/admin/contests/new" element={<AdminContestForm />} />
+            <Route path="/admin/contests/:id/edit" element={<AdminContestForm />} />
             <Route path="/admin/users" element={<AdminUsers />} />
           </Route>
 

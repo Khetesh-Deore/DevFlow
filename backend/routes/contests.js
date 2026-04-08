@@ -8,37 +8,36 @@ const {
 } = require('../controllers/contestController');
 
 const { protect, authorize } = require('../middleware/auth');
+const { submissionLimiter } = require('../middleware/rateLimiter');
 
 const admin = [protect, authorize('admin', 'superadmin')];
 
-// Optional auth middleware — attaches user if token present, doesn't fail if not
 const optionalAuth = async (req, res, next) => {
   try {
-    const { protect: protectFn } = require('../middleware/auth');
     if (req.headers.authorization?.startsWith('Bearer')) {
-      return protectFn(req, res, next);
+      return protect(req, res, next);
     }
   } catch {}
   next();
 };
 
-// Public
+// IMPORTANT: specific routes MUST come before /:slug to avoid conflicts
 router.get('/', optionalAuth, getContests);
-router.get('/:slug', getContest);
 
-const { submissionLimiter } = require('../middleware/rateLimiter');
-
-// Protected
-router.post('/:id/register', protect, registerForContest);
-router.post('/:slug/submit', protect, submissionLimiter, submitInContest);
-router.get('/:slug/leaderboard', getContestLeaderboard);
-router.get('/:slug/my-submissions', protect, getContestSubmissions);
-router.get('/:slug/report', ...admin, getContestReport);
-
-// Admin
+// Admin routes
 router.post('/', ...admin, createContest);
 router.put('/:id', ...admin, updateContest);
 router.delete('/:id', ...admin, deleteContest);
 router.patch('/:id/publish', ...admin, togglePublish);
+router.post('/:id/register', protect, registerForContest);
+
+// Slug-based specific routes — MUST be before /:slug
+router.get('/:slug/leaderboard', getContestLeaderboard);
+router.get('/:slug/my-submissions', protect, getContestSubmissions);
+router.get('/:slug/report', ...admin, getContestReport);
+router.post('/:slug/submit', protect, submissionLimiter, submitInContest);
+
+// Generic slug route — LAST
+router.get('/:slug', optionalAuth, getContest);
 
 module.exports = router;

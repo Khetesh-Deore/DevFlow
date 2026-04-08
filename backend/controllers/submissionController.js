@@ -8,6 +8,7 @@ const { executeCode, checkJudgeHealth } = require('../services/judgeService');
 const processSubmission = async (submission, problem, userId) => {
   try {
     const testCases = await TestCase.find({ problemId: problem._id }).sort({ isSample: -1, order: 1 });
+    console.log(`📋 [SUBMISSION] Found ${testCases.length} test cases for problem ${problem._id} (${problem.title})`);
 
     submission.status = 'running';
     submission.totalTestCases = testCases.length;
@@ -29,7 +30,8 @@ const processSubmission = async (submission, problem, userId) => {
     const judgeResult = await executeCode(judgePayload);
 
     submission.status = judgeResult.overall_status;
-    submission.passedTestCases = judgeResult.passed;
+    submission.passedTestCases = judgeResult.passed || 0;
+    submission.totalTestCases = Math.max(judgeResult.total || 0, testCases.length);
     submission.compileError = judgeResult.compile_error || '';
     submission.testCaseResults = (judgeResult.results || []).map(r => ({
       testCaseId: r.testcase_id,

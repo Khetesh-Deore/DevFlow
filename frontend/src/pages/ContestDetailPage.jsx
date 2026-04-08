@@ -54,6 +54,7 @@ function LiveLeaderboard({ slug, problems = [], isLive, currentUserId }) {
     <div className="text-center py-12 text-gray-500">
       <BarChart2 size={28} className="mx-auto mb-2 opacity-30" />
       <p className="text-sm">No submissions yet. Be the first!</p>
+      {isLive && <p className="text-xs text-gray-600 mt-1">Auto-refreshes every 15 seconds</p>}
     </div>
   );
 
@@ -132,7 +133,7 @@ function ProblemCard({ p, slug, mySubmissions = [], isLive }) {
 
   return (
     <Link
-      to={isLive ? `/problems/${p.problemId?.slug}` : `/problems/${p.problemId?.slug}`}
+      to={isLive ? `/contests/${slug}/problems/${p.problemId?.slug}` : `/problems/${p.problemId?.slug}`}
       className={`relative bg-gray-900 border rounded-xl p-5 transition-all hover:shadow-lg group ${
         accepted ? 'border-green-500/40 hover:border-green-500/60'
         : attempted ? 'border-yellow-500/30 hover:border-yellow-500/50'
@@ -217,8 +218,12 @@ export default function ContestDetailPage() {
     socketRef.current = io(import.meta.env.VITE_SOCKET_URL);
     socketRef.current.emit('contest:join', { contestId: contest._id, token });
 
-    socketRef.current.on('leaderboard:update', () => {
-      qc.invalidateQueries(['contest-leaderboard', slug]);
+    socketRef.current.on('leaderboard:update', (data) => {
+      if (data && Array.isArray(data)) {
+        qc.setQueryData(['contest-leaderboard', slug], { data });
+      } else {
+        qc.invalidateQueries(['contest-leaderboard', slug]);
+      }
       qc.invalidateQueries(['my-contest-subs', slug]);
     });
 
@@ -532,7 +537,7 @@ export default function ContestDetailPage() {
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {contest.problems?.map(p => (
-                <Link key={p._id} to={`/problems/${p.problemId?.slug}`}
+                <Link key={p._id} to={`/contests/${slug}/problems/${p.problemId?.slug}`}
                   className="bg-gray-900 border border-gray-800 hover:border-gray-600 rounded-xl p-5 transition-all group">
                   <div className="flex items-start justify-between mb-3">
                     <span className="text-xs font-bold text-gray-500 bg-gray-800 px-2 py-0.5 rounded font-mono">

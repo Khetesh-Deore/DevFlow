@@ -84,7 +84,10 @@ export default function SubmissionPanel({ submission, isLoading }) {
       {/* Accepted */}
       {status === 'accepted' && (
         <div>
-          <ProgressBar passed={passedTestCases} total={totalTestCases} />
+          {totalTestCases > 0 && <ProgressBar passed={passedTestCases} total={totalTestCases} />}
+          {totalTestCases === 0 && (
+            <p className="text-xs text-green-400 mt-1">All test cases passed</p>
+          )}
           {maxTime > 0 && (
             <p className="text-xs text-gray-500 mt-2">Runtime: {maxTime}ms</p>
           )}

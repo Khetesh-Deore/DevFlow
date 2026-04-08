@@ -169,6 +169,20 @@ const processContestSubmission = async (submission, contest, problem, contestPro
   try {
     const testCases = await TestCase.find({ problemId: problem._id }).sort({ isSample: -1, order: 1 });
 
+    if (testCases.length === 0) {
+      submission.status = 'runtime_error';
+      submission.compileError = 'No test cases found for this problem';
+      await submission.save();
+
+      await ContestSubmission.create({
+        contestId: contest._id, userId, problemId: problem._id,
+        submissionId: submission._id, status: 'runtime_error',
+        points: 0, timeTakenSec: 0, attemptNumber: 1, penaltyMinutes: 0,
+        isFirstAccepted: false, submittedAt: submission.submittedAt
+      });
+      return;
+    }
+
     submission.status = 'running';
     submission.totalTestCases = testCases.length;
     await submission.save();
@@ -183,7 +197,8 @@ const processContestSubmission = async (submission, contest, problem, contestPro
     });
 
     submission.status = judgeResult.overall_status;
-    submission.passedTestCases = judgeResult.passed;
+    submission.passedTestCases = judgeResult.passed || 0;
+    submission.totalTestCases = Math.max(judgeResult.total || 0, testCases.length);
     submission.compileError = judgeResult.compile_error || '';
     submission.testCaseResults = (judgeResult.results || []).map(r => ({
       testCaseId: r.testcase_id, status: r.status, timeTakenMs: r.time_taken_ms,
@@ -193,17 +208,15 @@ const processContestSubmission = async (submission, contest, problem, contestPro
     submission.timeTakenMs = Math.max(...(judgeResult.results || []).map(r => r.time_taken_ms || 0), 0);
     await submission.save();
 
-    const timeTakenSec = Math.floor((submission.submittedAt - contest.startTime) / 1000);
+    const timeTakenSec = Math.floor((Date.now() - new Date(contest.startTime)) / 1000);
 
-    const attemptCount = await ContestSubmission.countDocuments({
+    const prevAttempts = await ContestSubmission.countDocuments({
       contestId: contest._id, userId, problemId: problem._id
     });
 
-    const penalty = judgeResult.overall_status !== 'accepted'
-      ? (attemptCount * contest.penaltyMinutes)
-      : 0;
-
-    const points = judgeResult.overall_status === 'accepted' ? contestProblem.points : 0;
+    const isAccepted = judgeResult.overall_status === 'accepted';
+    const points = isAccepted ? (contestProblem.points || 0) : 0;
+    const penalty = !isAccepted ? (prevAttempts * (contest.penaltyMinutes || 20)) : 0;
 
     await ContestSubmission.create({
       contestId: contest._id,
@@ -213,24 +226,37 @@ const processContestSubmission = async (submission, contest, problem, contestPro
       status: judgeResult.overall_status,
       points,
       timeTakenSec,
-      attemptNumber: attemptCount + 1,
+      attemptNumber: prevAttempts + 1,
       penaltyMinutes: penalty,
-      isFirstAccepted: judgeResult.overall_status === 'accepted' && attemptCount === 0,
+      isFirstAccepted: isAccepted && prevAttempts === 0,
       submittedAt: submission.submittedAt
     });
 
-    if (judgeResult.overall_status === 'accepted') {
-      if (io) io.to(`contest:${contest._id}`).emit('leaderboard:update', { userId, problemId: problem._id });
-    }
-
+    // Update problem stats
     await Problem.findByIdAndUpdate(problem._id, { $inc: { totalSubmissions: 1 } });
-    if (judgeResult.overall_status === 'accepted') {
+    if (isAccepted) {
       await Problem.findByIdAndUpdate(problem._id, { $inc: { totalAccepted: 1 } });
       await Problem.updateAcceptanceRate(problem._id);
+      // Update user solved stats
+      await User.findByIdAndUpdate(userId, {
+        $addToSet: { solvedProblems: problem._id },
+        $inc: {
+          'stats.totalSolved': 1,
+          [`stats.${problem.difficulty.toLowerCase()}Solved`]: 1,
+          'stats.acceptedSubmissions': 1
+        }
+      });
     }
     await User.findByIdAndUpdate(userId, { $inc: { 'stats.totalSubmissions': 1 } });
 
+    // Emit leaderboard update via socket
+    if (io) {
+      const leaderboard = await require('../services/leaderboardService').computeLeaderboard(contest);
+      io.to(`contest_${contest._id}`).emit('leaderboard:update', leaderboard);
+    }
+
   } catch (err) {
+    console.error('Contest submission processing error:', err);
     submission.status = 'runtime_error';
     submission.compileError = err.message;
     await submission.save();
