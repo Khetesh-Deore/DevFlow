@@ -50,6 +50,8 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 1000 * 60 * 5 } }
 });
 
+export { queryClient };
+
 export default function App() {
   const { token, setUser, setLoading, logout } = useAuthStore();
 
