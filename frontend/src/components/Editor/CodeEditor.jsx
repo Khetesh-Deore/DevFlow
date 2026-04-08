@@ -55,8 +55,23 @@ export default function CodeEditor({
   onChange,
   language = 'python',
   readOnly = false,
-  height = '500px'
+  height = '500px',
+  disableCopyPaste = false
 }) {
+  const handleEditorDidMount = (editor, monaco) => {
+    if (disableCopyPaste) {
+      // Disable copy, cut, paste commands
+      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyC, () => {});
+      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyX, () => {});
+      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyV, () => {});
+      
+      // Disable context menu copy/paste
+      editor.updateOptions({
+        contextmenu: false
+      });
+    }
+  };
+
   return (
     <Editor
       height={height}
@@ -64,6 +79,7 @@ export default function CodeEditor({
       value={value}
       onChange={(val) => onChange(val ?? '')}
       theme="vs-dark"
+      onMount={handleEditorDidMount}
       loading={
         <div className="flex items-center justify-center h-full bg-gray-900 text-gray-400 text-sm">
           Loading editor...

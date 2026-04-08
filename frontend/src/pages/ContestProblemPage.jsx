@@ -5,7 +5,7 @@ import {
   ArrowLeft, Clock,
   Play, Send, Trophy, CheckCircle2,
   XCircle, AlertTriangle, RotateCcw, Maximize2, Minimize2,
-  FileText, List
+  FileText, List, Lock
 } from 'lucide-react';
 import { getProblem } from '../api/problemApi';
 import { getContest, submitInContest, getContestLeaderboard } from '../api/contestApi';
@@ -175,6 +175,40 @@ export default function ContestProblemPage() {
   const timer = useCountdown(contestEndTime);
   const isRedTimer = timer.total < 600000 && !isEnded;
   const isWarning = timer.total < 1800000 && !isEnded;
+
+  // Prevent copy-paste during live contests
+  useEffect(() => {
+    if (isEnded) return;
+
+    const preventCopyPaste = (e) => {
+      if (e.ctrlKey && (e.key === 'c' || e.key === 'v' || e.key === 'x')) {
+        e.preventDefault();
+        toast.error('Copy/Paste is disabled during contests', { duration: 2000 });
+      }
+    };
+
+    const preventContextMenu = (e) => {
+      e.preventDefault();
+    };
+
+    const preventCopy = (e) => e.preventDefault();
+    const preventPaste = (e) => e.preventDefault();
+    const preventCut = (e) => e.preventDefault();
+
+    document.addEventListener('keydown', preventCopyPaste);
+    document.addEventListener('contextmenu', preventContextMenu);
+    document.addEventListener('copy', preventCopy);
+    document.addEventListener('paste', preventPaste);
+    document.addEventListener('cut', preventCut);
+
+    return () => {
+      document.removeEventListener('keydown', preventCopyPaste);
+      document.removeEventListener('contextmenu', preventContextMenu);
+      document.removeEventListener('copy', preventCopy);
+      document.removeEventListener('paste', preventPaste);
+      document.removeEventListener('cut', preventCut);
+    };
+  }, [isEnded]);
 
   const contestProblem = contest?.problems?.find(
     p => p.problemId?.slug === problemSlug || p.problemId?._id?.toString() === problem?._id?.toString()
@@ -497,6 +531,11 @@ export default function ContestProblemPage() {
                   class must be <code>Main</code>
                 </span>
               )}
+              {!isEnded && (
+                <span className="text-xs text-orange-400 bg-orange-400/10 px-2 py-0.5 rounded flex items-center gap-1">
+                  <Lock size={10} /> Copy/Paste disabled
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-1">
               <button onClick={handleReset} title="Reset to template"
@@ -519,7 +558,13 @@ export default function ContestProblemPage() {
 
           {/* Editor */}
           <div style={{ height: `${editorPct}%` }} className="overflow-hidden shrink-0 min-h-0">
-            <CodeEditor value={code} onChange={setCode} language={language} height="100%" />
+            <CodeEditor 
+              value={code} 
+              onChange={setCode} 
+              language={language} 
+              height="100%" 
+              disableCopyPaste={!isEnded}
+            />
           </div>
 
           {/* Horizontal drag handle */}
