@@ -9,6 +9,15 @@ const asyncHandler = require('../utils/asyncHandler');
 const { executeCode } = require('../services/judgeService');
 const { computeLeaderboard } = require('../services/leaderboardService');
 
+// Parse datetime-local string as IST (UTC+5:30)
+const parseIST = (dtStr) => {
+  if (!dtStr) return undefined;
+  // If already ISO with Z or offset, return as-is
+  if (dtStr.includes('Z') || dtStr.includes('+')) return new Date(dtStr);
+  // Treat as IST: subtract 5h30m to get UTC
+  return new Date(new Date(dtStr).getTime() - (5.5 * 60 * 60 * 1000));
+};
+
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 const getContestStatus = (contest) => {
@@ -73,7 +82,10 @@ exports.createContest = asyncHandler(async (req, res) => {
   const { title, description, type, startTime, endTime, problems = [],
     scoringType, penaltyMinutes, rules, registrationRequired } = req.body;
 
-  if (new Date(endTime) <= new Date(startTime)) {
+  const start = parseIST(startTime);
+  const end = parseIST(endTime);
+
+  if (end <= start) {
     return res.status(400).json({ success: false, error: 'endTime must be after startTime' });
   }
 
@@ -83,7 +95,7 @@ exports.createContest = asyncHandler(async (req, res) => {
   }
 
   const contest = await Contest.create({
-    title, description, type, startTime, endTime, problems,
+    title, description, type, startTime: start, endTime: end, problems,
     scoringType, penaltyMinutes, rules, registrationRequired,
     createdBy: req.user.id
   });
@@ -101,6 +113,9 @@ exports.updateContest = asyncHandler(async (req, res) => {
 
   const contest = await Contest.findById(req.params.id);
   if (!contest) return res.status(404).json({ success: false, error: 'Contest not found' });
+
+  if (req.body.startTime) req.body.startTime = parseIST(req.body.startTime);
+  if (req.body.endTime) req.body.endTime = parseIST(req.body.endTime);
 
   Object.assign(contest, req.body);
   await contest.save();

@@ -32,7 +32,8 @@ app.use(cors({
       'http://localhost:3000',
       'https://devflow26.vercel.app',
       'https://devflow-frontend-new-1063807782201.europe-west1.run.app',
-      'https://devflow-frontend-1063807782201.asia-south1.run.app'
+      'https://devflow-frontend-1063807782201.asia-south1.run.app',
+      'https://devflow26-1063807782201.asia-south1.run.app'
     ];
     if (
       allowed.includes(origin) ||

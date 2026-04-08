@@ -21,6 +21,12 @@ function SectionTitle({ children }) {
   return <h2 className="text-base font-semibold text-white mb-4 pb-2 border-b border-gray-800">{children}</h2>;
 }
 
+// Convert UTC date to local datetime-local input value
+function toLocalDatetimeInput(date) {
+  const offset = date.getTimezoneOffset() * 60000;
+  return new Date(date - offset).toISOString().slice(0, 16);
+}
+
 function computeDuration(start, end) {
   if (!start || !end) return null;
   const diff = new Date(end) - new Date(start);
@@ -59,8 +65,8 @@ export default function AdminContestForm() {
         type: c.type || 'unrated',
         scoringType: c.scoringType || 'points',
         penaltyMinutes: c.penaltyMinutes || 20,
-        startTime: c.startTime ? new Date(c.startTime).toISOString().slice(0, 16) : '',
-        endTime: c.endTime ? new Date(c.endTime).toISOString().slice(0, 16) : '',
+        startTime: c.startTime ? c.startTime.slice(0, 16) : '',
+        endTime: c.endTime ? c.endTime.slice(0, 16) : '',
         registrationRequired: c.registrationRequired ?? true,
         rules: c.rules || '',
         isPublished: c.isPublished || false
@@ -140,6 +146,8 @@ export default function AdminContestForm() {
     try {
       const payload = {
         ...form,
+        startTime: form.startTime,
+        endTime: form.endTime,
         isPublished: publish,
         problems: problems.map((p, i) => ({
           problemId: p.problemId,
