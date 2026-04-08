@@ -177,7 +177,9 @@ export default function ProfilePage() {
   const { data, isLoading, isError } = useQuery({
     queryKey: ['profile', username],
     queryFn: () => getUserProfile(username),
-    enabled: !!username && username !== 'undefined'
+    enabled: !!username && username !== 'undefined',
+    refetchInterval: 30000, // Refetch every 30 seconds to keep heatmap updated
+    staleTime: 10000 // Consider data stale after 10 seconds
   });
 
   const { mutate: doUpdate } = useMutation({

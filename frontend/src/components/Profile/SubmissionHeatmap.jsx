@@ -19,8 +19,12 @@ export default function SubmissionHeatmap({ data = {} }) {
   const [tooltip, setTooltip] = useState(null);
 
   const { weeks, monthLabels, totalCount } = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Get current date in IST (UTC+5:30)
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000; // 5 hours 30 minutes in milliseconds
+    const istNow = new Date(now.getTime() + istOffset);
+    
+    const today = new Date(istNow.toISOString().slice(0, 10) + 'T00:00:00Z');
 
     const start = new Date(today);
     start.setDate(start.getDate() - 52 * 7 + 1);

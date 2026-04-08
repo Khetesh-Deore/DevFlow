@@ -11,8 +11,19 @@ const getSubmissionCalendar = async (userId) => {
   since.setDate(since.getDate() - 365);
 
   const result = await Submission.aggregate([
-    { $match: { userId: new mongoose.Types.ObjectId(userId), status: 'accepted', createdAt: { $gte: since } } },
-    { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, count: { $sum: 1 } } }
+    { $match: { userId: new mongoose.Types.ObjectId(userId), createdAt: { $gte: since } } },
+    {
+      $addFields: {
+        // Convert UTC to IST (UTC+5:30) by adding 5.5 hours in milliseconds
+        istDate: { $add: ['$createdAt', 5.5 * 60 * 60 * 1000] }
+      }
+    },
+    { 
+      $group: { 
+        _id: { $dateToString: { format: '%Y-%m-%d', date: '$istDate' } }, 
+        count: { $sum: 1 } 
+      } 
+    }
   ]);
 
   const calendar = {};

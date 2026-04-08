@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Code2, Menu, X, ChevronDown, LayoutDashboard, User, ShieldCheck, LogOut, History } from 'lucide-react';
+import { Menu, X, ChevronDown, LayoutDashboard, User, ShieldCheck, LogOut, History } from 'lucide-react';
 import useAuthStore, { selectIsAdmin } from '../../store/authStore';
 import { logoutUser } from '../../api/authApi';
+import Logo from './Logo';
 
 const NAV_LINKS = [
   { label: 'Problems', to: '/problems' },
@@ -49,9 +50,11 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
 
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2">
-          <Code2 className="text-blue-500" size={22} />
-          <span className="text-white font-bold text-lg">DevFlow</span>
+        <Link to="/" className="flex items-center gap-2.5 group">
+          <Logo size={28} />
+          <span className="text-white font-bold text-lg bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent group-hover:from-blue-300 group-hover:via-purple-300 group-hover:to-pink-300 transition-all">
+            DevFlow
+          </span>
         </Link>
 
         {/* Desktop Nav Links */}
