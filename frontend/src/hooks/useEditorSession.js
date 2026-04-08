@@ -2,70 +2,78 @@ import { useState, useEffect, useCallback } from 'react';
 import useAuthStore from '../store/authStore';
 import { DEFAULT_TEMPLATES } from '../components/Editor/CodeEditor';
 
-const STORAGE_KEY = (userId, problemId) => `editor_${userId}_${problemId}`;
+// Storage key per user + problem + language
+const codeKey = (userId, problemId, lang) => `code_${userId}_${problemId}_${lang}`;
+const langKey = (userId, problemId) => `lang_${userId}_${problemId}`;
+
+function saveCode(userId, problemId, lang, code) {
+  try { localStorage.setItem(codeKey(userId, problemId, lang), code); } catch { }
+}
+
+function loadCode(userId, problemId, lang) {
+  try { return localStorage.getItem(codeKey(userId, problemId, lang)) ?? null; } catch { return null; }
+}
+
+function saveLang(userId, problemId, lang) {
+  try { localStorage.setItem(langKey(userId, problemId), lang); } catch { }
+}
+
+function loadLang(userId, problemId) {
+  try { return localStorage.getItem(langKey(userId, problemId)) ?? 'python'; } catch { return 'python'; }
+}
 
 export default function useEditorSession(problemId) {
   const { user } = useAuthStore();
   const userId = user?.id || user?._id || 'guest';
 
-  const load = useCallback(() => {
-    if (!problemId) return null;
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY(userId, problemId));
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  }, [userId, problemId]);
-
-  const saved = load();
-
-  const [language, setLanguageState] = useState(saved?.language || 'python');
-  const [code, setCodeState] = useState(
-    saved?.code ?? DEFAULT_TEMPLATES[saved?.language || 'python']
+  const [language, setLanguageState] = useState(() =>
+    problemId ? loadLang(userId, problemId) : 'python'
   );
 
-  // Persist on every change
-  const persist = useCallback((lang, c) => {
-    if (!problemId) return;
-    try {
-      localStorage.setItem(STORAGE_KEY(userId, problemId), JSON.stringify({ language: lang, code: c }));
-    } catch {}
-  }, [userId, problemId]);
+  const [code, setCodeState] = useState(() => {
+    if (!problemId) return DEFAULT_TEMPLATES.python;
+    const lang = loadLang(userId, problemId);
+    return loadCode(userId, problemId, lang) ?? DEFAULT_TEMPLATES[lang] ?? '';
+  });
 
-  const setLanguage = useCallback((lang) => {
-    // Only reset code to template if current code is still a template
-    setCodeState(prev => {
-      const isTemplate = Object.values(DEFAULT_TEMPLATES).includes(prev);
-      const next = isTemplate ? (DEFAULT_TEMPLATES[lang] || '') : prev;
-      persist(lang, next);
-      return next;
-    });
-    setLanguageState(lang);
-  }, [persist]);
-
-  const setCode = useCallback((c) => {
-    setCodeState(c);
-    persist(language, c);
-  }, [language, persist]);
-
-  // Reload when problemId changes (navigating between problems)
+  // When problemId changes (navigating between problems), restore that problem's session
   useEffect(() => {
-    const s = load();
-    if (s) {
-      setLanguageState(s.language || 'python');
-      setCodeState(s.code ?? DEFAULT_TEMPLATES[s.language || 'python']);
-    } else {
-      setLanguageState('python');
-      setCodeState(DEFAULT_TEMPLATES.python);
-    }
-  }, [problemId]);
+    if (!problemId) return;
+    const lang = loadLang(userId, problemId);
+    const saved = loadCode(userId, problemId, lang) ?? DEFAULT_TEMPLATES[lang] ?? '';
+    setLanguageState(lang);
+    setCodeState(saved);
+  }, [problemId, userId]);
 
+  // Switch language — save current code for old lang, load saved code for new lang
+  const setLanguage = useCallback((newLang) => {
+    if (!problemId) { setLanguageState(newLang); return; }
+
+    // Save current code under current language before switching
+    setCodeState(prev => {
+      saveCode(userId, problemId, language, prev);
+      return prev;
+    });
+
+    // Load saved code for new language (or template if never written)
+    const saved = loadCode(userId, problemId, newLang) ?? DEFAULT_TEMPLATES[newLang] ?? '';
+    saveLang(userId, problemId, newLang);
+    setLanguageState(newLang);
+    setCodeState(saved);
+  }, [userId, problemId, language]);
+
+  // Persist code on every keystroke
+  const setCode = useCallback((newCode) => {
+    setCodeState(newCode);
+    if (problemId) saveCode(userId, problemId, language, newCode);
+  }, [userId, problemId, language]);
+
+  // Reset current language to template
   const reset = useCallback(() => {
-    const tpl = DEFAULT_TEMPLATES[language] || '';
+    const tpl = DEFAULT_TEMPLATES[language] ?? '';
     setCodeState(tpl);
-    persist(language, tpl);
-  }, [language, persist]);
+    if (problemId) saveCode(userId, problemId, language, tpl);
+  }, [userId, problemId, language]);
 
   return { language, setLanguage, code, setCode, reset };
 }
