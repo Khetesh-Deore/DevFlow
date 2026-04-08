@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronDown, ChevronRight, Clock, ArrowLeft, Play, Send, Terminal, FileText, Code2, Maximize2, Minimize2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Clock, ArrowLeft, Play, Send, Terminal, FileText, Code2, Maximize2, Minimize2, RotateCcw } from 'lucide-react';
 import { getProblem } from '../api/problemApi';
 import { submitCode, runCode, getSubmission, getMySubmissions } from '../api/submissionApi';
 import CodeEditor, { DEFAULT_TEMPLATES } from '../components/Editor/CodeEditor';
@@ -282,13 +282,26 @@ export default function ProblemDetailPage() {
                 </span>
               )}
             </div>
-            <button
-              onClick={() => setIsFullscreen(f => !f)}
-              title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen editor'}
-              className="p-1.5 text-gray-500 hover:text-white hover:bg-gray-800 rounded transition-colors"
-            >
-              {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => {
+                  if (window.confirm('Reset code to template?')) {
+                    setCode(DEFAULT_TEMPLATES[language] || '');
+                  }
+                }}
+                title="Reset to template"
+                className="p-1.5 text-gray-500 hover:text-white hover:bg-gray-800 rounded transition-colors"
+              >
+                <RotateCcw size={14} />
+              </button>
+              <button
+                onClick={() => setIsFullscreen(f => !f)}
+                title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen editor'}
+                className="p-1.5 text-gray-500 hover:text-white hover:bg-gray-800 rounded transition-colors"
+              >
+                {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+              </button>
+            </div>
           </div>
 
           {/* Monaco Editor */}

@@ -539,6 +539,12 @@ export default function ContestProblemPage() {
                 }`}>
                 <List size={12} /> Problems
               </button>
+              {rightPanel === 'problems' && (
+                <button onClick={handleReset} title="Reset current problem code"
+                  className="flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors text-gray-400 hover:text-white hover:bg-gray-800">
+                  <RotateCcw size={12} /> Reset
+                </button>
+              )}
               <select value={language} onChange={e => handleLanguageChange(e.target.value)}
                 className="bg-gray-800 text-white text-xs px-2 py-1 rounded border border-gray-700 focus:outline-none">
                 {LANGUAGES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
