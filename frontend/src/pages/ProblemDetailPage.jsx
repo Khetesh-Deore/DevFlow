@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronDown, ChevronRight, Clock, ArrowLeft, Play, Send, ChevronUp, Terminal, FileText, Code2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Clock, ArrowLeft, Play, Send, Terminal, FileText, Code2, Maximize2, Minimize2 } from 'lucide-react';
 import { getProblem } from '../api/problemApi';
 import { submitCode, runCode, getSubmission, getMySubmissions } from '../api/submissionApi';
 import CodeEditor, { DEFAULT_TEMPLATES } from '../components/Editor/CodeEditor';
@@ -9,6 +9,7 @@ import SubmissionPanel from '../components/Editor/SubmissionPanel';
 import useEditorSession from '../hooks/useEditorSession';
 import DifficultyBadge from '../components/Problem/DifficultyBadge';
 import toast from 'react-hot-toast';
+import { VDivider, HDivider } from '../components/Layout/ResizableSplit';
 
 const LANGUAGES = [
   { value: 'python', label: 'Python' },
@@ -24,26 +25,23 @@ const VERDICT_COLORS = {
   compilation_error: 'text-red-400', pending: 'text-gray-400', running: 'text-blue-400'
 };
 
+
 function HintsSection({ hints }) {
   const [revealed, setRevealed] = useState([]);
   if (!hints?.length) return null;
   return (
     <div className="mb-5">
       <h3 className="text-sm font-semibold text-gray-300 mb-2">Hints</h3>
-      <div className="flex flex-col gap-2">
-        {hints.map((hint, i) => (
-          <div key={i} className="border border-gray-700 rounded-lg overflow-hidden">
-            <button onClick={() => setRevealed(p => p.includes(i) ? p.filter(x => x !== i) : [...p, i])}
-              className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">
-              <span>Hint {i + 1}</span>
-              {revealed.includes(i) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-            </button>
-            {revealed.includes(i) && (
-              <div className="px-4 py-3 text-sm text-gray-300 bg-gray-800/50 border-t border-gray-700">{hint}</div>
-            )}
-          </div>
-        ))}
-      </div>
+      {hints.map((hint, i) => (
+        <div key={i} className="border border-gray-700 rounded-lg overflow-hidden mb-2">
+          <button onClick={() => setRevealed(p => p.includes(i) ? p.filter(x => x !== i) : [...p, i])}
+            className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">
+            <span>Hint {i + 1}</span>
+            {revealed.includes(i) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          </button>
+          {revealed.includes(i) && <div className="px-4 py-3 text-sm text-gray-300 bg-gray-800/50 border-t border-gray-700">{hint}</div>}
+        </div>
+      ))}
     </div>
   );
 }
@@ -71,69 +69,56 @@ function SubmissionHistory({ problemId }) {
   );
 }
 
-// Resizable divider
-function ResizableSplit({ leftPct, onDrag }) {
-  const dragging = useRef(false);
-  const containerRef = useRef(null);
-
-  useEffect(() => {
-    const onMove = (e) => {
-      if (!dragging.current) return;
-      const parent = document.getElementById('problem-split-container');
-      if (!parent) return;
-      const rect = parent.getBoundingClientRect();
-      const pct = Math.min(80, Math.max(20, ((e.clientX - rect.left) / rect.width) * 100));
-      onDrag(pct);
-    };
-    const onUp = () => { dragging.current = false; document.body.style.cursor = ''; };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
-  }, [onDrag]);
-
-  return (
-    <div
-      ref={containerRef}
-      onMouseDown={() => { dragging.current = true; document.body.style.cursor = 'col-resize'; }}
-      className="w-1 shrink-0 bg-gray-800 hover:bg-blue-500 cursor-col-resize transition-colors"
-    />
-  );
-}
-
 export default function ProblemDetailPage() {
   const { slug } = useParams();
-  const [activeTab, setActiveTab] = useState('description');
-  const [mobilePanel, setMobilePanel] = useState('problem');
-  const [customInput, setCustomInput] = useState('');
-  const [showCustomInput, setShowCustomInput] = useState(true);
-  const [isRunning, setIsRunning] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [runResult, setRunResult] = useState(null);
+  const containerRef = useRef(null);
+  const rightRef = useRef(null);
+
+  // Split percentages
+  const [leftPct, setLeftPct]     = useState(45);
+  const [editorPct, setEditorPct] = useState(65);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const [activeTab, setActiveTab]         = useState('description');
+  const [mobilePanel, setMobilePanel]     = useState('problem');
+  const [activeBottomTab, setActiveBottomTab] = useState('testcase'); // testcase | result
+  const [customInput, setCustomInput]     = useState('');
+  const [isRunning, setIsRunning]         = useState(false);
+  const [isSubmitting, setIsSubmitting]   = useState(false);
+  const [runResult, setRunResult]         = useState(null);
   const [submissionResult, setSubmissionResult] = useState(null);
-  const [activeResult, setActiveResult] = useState(null);
-  const [leftPct, setLeftPct] = useState(45);
   const pollRef = useRef(null);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['problem', slug],
     queryFn: () => getProblem(slug)
   });
-
   const problem = data?.data;
   const { language, setLanguage, code, setCode } = useEditorSession(problem?._id);
 
   useEffect(() => () => clearInterval(pollRef.current), []);
 
   useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape' && isFullscreen) setIsFullscreen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isFullscreen]);
+  useEffect(() => {
     if (!problem) return;
     const input = problem.sampleTestCases?.[0]?.input || problem.examples?.[0]?.input || '';
     if (input) setCustomInput(input);
   }, [problem?._id]);
 
+  // Vertical drag handler
+  const handleVDrag = useCallback((pct) => setLeftPct(pct), []);
+
+  // Horizontal drag handler
+  const handleHDrag = useCallback((pct) => setEditorPct(pct), []);
+
   const handleRun = async () => {
     if (!code.trim()) return toast.error('Write some code first');
     const input = customInput || problem?.sampleTestCases?.[0]?.input || '';
-    setIsRunning(true); setActiveResult('run'); setRunResult(null);
+    setIsRunning(true); setRunResult(null); setActiveBottomTab('result');
     let lastErr;
     for (let i = 1; i <= 3; i++) {
       try {
@@ -153,7 +138,7 @@ export default function ProblemDetailPage() {
 
   const handleSubmit = async () => {
     if (!code.trim()) return toast.error('Write some code first');
-    setIsSubmitting(true); setActiveResult('submit'); setSubmissionResult(null);
+    setIsSubmitting(true); setSubmissionResult(null); setActiveBottomTab('result');
     try {
       const res = await submitCode({ code, language, problemId: problem._id });
       let pollCount = 0;
@@ -207,14 +192,15 @@ export default function ProblemDetailPage() {
         ))}
       </div>
 
-      {/* Content */}
-      <div id="problem-split-container" className="flex flex-1 overflow-hidden">
+      {/* Main split container */}
+      <div ref={containerRef} className="flex flex-1 overflow-hidden">
 
-        {/* LEFT — Problem Statement */}
+        {/* ── LEFT: Problem Statement ── */}
         <div
-          className={`${mobilePanel === 'problem' ? 'flex' : 'hidden'} md:flex flex-col overflow-hidden border-r border-gray-800`}
+          className={`${mobilePanel === 'problem' ? 'flex' : 'hidden'} md:flex flex-col overflow-hidden shrink-0`}
           style={{ width: `${leftPct}%` }}
         >
+          {/* Tabs */}
           <div className="flex border-b border-gray-800 bg-gray-900 shrink-0">
             {[['description', 'Description'], ['submissions', 'Submissions']].map(([val, label]) => (
               <button key={val} onClick={() => setActiveTab(val)}
@@ -223,6 +209,7 @@ export default function ProblemDetailPage() {
               </button>
             ))}
           </div>
+
           <div className="flex-1 overflow-y-auto p-5">
             {activeTab === 'description' ? (
               <>
@@ -268,70 +255,115 @@ export default function ProblemDetailPage() {
           </div>
         </div>
 
-        {/* Drag handle — desktop only */}
+        {/* ── Vertical drag handle ── */}
         <div className="hidden md:block">
-          <ResizableSplit leftPct={leftPct} onDrag={setLeftPct} />
+          <VDivider onDrag={handleVDrag} containerRef={containerRef} />
         </div>
 
-        {/* RIGHT — Code Editor */}
+        {/* ── RIGHT: Editor + Testcase (vertically split) ── */}
         <div
-          className={`${mobilePanel === 'code' ? 'flex' : 'hidden'} md:flex flex-col overflow-hidden flex-1`}
+          ref={rightRef}
+          className={`${mobilePanel === 'code' ? 'flex' : 'hidden'} md:flex flex-col overflow-hidden ${
+            isFullscreen ? 'fixed inset-0 z-50 bg-gray-950' : ''
+          }`}
+          style={isFullscreen ? {} : { width: `${100 - leftPct}%` }}
         >
-          <div className="flex items-center gap-3 px-4 py-2 bg-gray-900 border-b border-gray-800 shrink-0">
-            <select value={language} onChange={e => setLanguage(e.target.value)}
-              className="bg-gray-800 text-white text-sm px-3 py-1.5 rounded-lg border border-gray-700 focus:outline-none">
-              {LANGUAGES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
-            </select>
-            {language === 'java' && (
-              <span className="text-xs text-yellow-400 bg-yellow-400/10 px-2 py-1 rounded-lg">
-                class must be named <code className="font-mono">Main</code>
-              </span>
-            )}
+          {/* Language bar */}
+          <div className="flex items-center justify-between px-4 py-2 bg-gray-900 border-b border-gray-800 shrink-0">
+            <div className="flex items-center gap-3">
+              <select value={language} onChange={e => setLanguage(e.target.value)}
+                className="bg-gray-800 text-white text-sm px-3 py-1.5 rounded-lg border border-gray-700 focus:outline-none">
+                {LANGUAGES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+              </select>
+              {language === 'java' && (
+                <span className="text-xs text-yellow-400 bg-yellow-400/10 px-2 py-1 rounded-lg">
+                  class must be named <code className="font-mono">Main</code>
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => setIsFullscreen(f => !f)}
+              title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen editor'}
+              className="p-1.5 text-gray-500 hover:text-white hover:bg-gray-800 rounded transition-colors"
+            >
+              {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+            </button>
           </div>
-          <div className="flex-1 overflow-hidden">
+
+          {/* Monaco Editor */}
+          <div style={{ height: `${editorPct}%` }} className="overflow-hidden shrink-0 min-h-0">
             <CodeEditor value={code} onChange={setCode} language={language} height="100%" />
           </div>
-          {showCustomInput && (
-            <div className="border-t border-gray-800 bg-gray-900 p-3 shrink-0">
-              <p className="text-xs text-gray-400 mb-1">Custom Input (stdin)</p>
-              <textarea rows={3} value={customInput} onChange={e => setCustomInput(e.target.value)}
-                placeholder="Enter custom input..."
-                className="w-full bg-gray-800 text-white text-sm font-mono px-3 py-2 rounded-lg border border-gray-700 focus:outline-none resize-none" />
+
+          {/* ── Horizontal drag handle ── */}
+          <HDivider onDrag={handleHDrag} containerRef={rightRef} />
+
+          {/* ── Bottom panel: Testcase / Result ── */}
+          <div className="flex flex-col overflow-hidden bg-gray-900" style={{ height: `${100 - editorPct}%` }}>
+            {/* Bottom tabs */}
+            <div className="flex items-center border-b border-gray-800 shrink-0 px-2 bg-gray-950">
+              {[['testcase', 'Testcase'], ['result', 'Test Result']].map(([val, label]) => (
+                <button key={val} onClick={() => setActiveBottomTab(val)}
+                  className={`px-4 py-2.5 text-xs font-medium transition-colors ${activeBottomTab === val ? 'text-white border-b-2 border-blue-500' : 'text-gray-400 hover:text-white'}`}>
+                  {label}
+                </button>
+              ))}
+              <div className="ml-auto flex gap-2 pr-1 py-1">
+                <button onClick={handleRun} disabled={isRunning || isSubmitting}
+                  className="flex items-center gap-1.5 px-4 py-1.5 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-white text-xs rounded-lg font-medium transition-colors">
+                  <Play size={11} /> {isRunning ? 'Running...' : 'Run'}
+                </button>
+                <button onClick={handleSubmit} disabled={isRunning || isSubmitting}
+                  className="flex items-center gap-1.5 px-4 py-1.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-xs rounded-lg font-medium transition-colors">
+                  <Send size={11} /> {isSubmitting ? 'Submitting...' : 'Submit'}
+                </button>
+              </div>
             </div>
-          )}
-          <div className="flex items-center justify-between px-4 py-2.5 bg-gray-900 border-t border-gray-800 shrink-0">
-            <button onClick={() => setShowCustomInput(s => !s)}
-              className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition-colors">
-              <Terminal size={13} />
-              {showCustomInput ? 'Hide' : 'Custom'} Input
-              {showCustomInput ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-            </button>
-            <div className="flex gap-2">
-              <button onClick={handleRun} disabled={isRunning || isSubmitting}
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-white text-sm rounded-lg transition-colors">
-                <Play size={13} /> {isRunning ? 'Running...' : 'Run'}
-              </button>
-              <button onClick={handleSubmit} disabled={isRunning || isSubmitting}
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm rounded-lg transition-colors">
-                <Send size={13} /> {isSubmitting ? 'Submitting...' : 'Submit'}
-              </button>
+
+            <div className="flex-1 overflow-y-auto p-4">
+              {activeBottomTab === 'testcase' && (
+                <div>
+                  <p className="text-xs text-gray-400 mb-2">Custom Input (stdin)</p>
+                  <textarea
+                    rows={5}
+                    value={customInput}
+                    onChange={e => setCustomInput(e.target.value)}
+                    placeholder="Enter custom input..."
+                    className="w-full bg-gray-800 text-white text-sm font-mono px-3 py-2 rounded-lg border border-gray-700 focus:outline-none resize-none"
+                  />
+                </div>
+              )}
+
+              {activeBottomTab === 'result' && (
+                <div>
+                  {!runResult && !submissionResult && !isRunning && !isSubmitting && (
+                    <p className="text-sm text-gray-500 text-center py-8">You must run your code first</p>
+                  )}
+                  {(isRunning || isSubmitting) && (
+                    <div className="flex items-center gap-2 text-blue-400 py-4">
+                      <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                      <span className="text-sm">{isRunning ? 'Running...' : 'Judging...'}</span>
+                    </div>
+                  )}
+                  {runResult && !isRunning && (
+                    <div>
+                      <p className="text-xs text-gray-400 mb-2">Run Result · {runResult.timeTakenMs}ms</p>
+                      {runResult.compileError
+                        ? <pre className="text-xs text-red-400 font-mono whitespace-pre-wrap">{runResult.compileError}</pre>
+                        : <>
+                            {runResult.stdout && <div className="mb-2"><p className="text-xs text-gray-500 mb-1">Output:</p><pre className="bg-gray-800 rounded p-2 text-xs font-mono text-gray-200 whitespace-pre-wrap">{runResult.stdout}</pre></div>}
+                            {runResult.stderr && <div><p className="text-xs text-gray-500 mb-1">Stderr:</p><pre className="bg-gray-800 rounded p-2 text-xs font-mono text-red-400 whitespace-pre-wrap">{runResult.stderr}</pre></div>}
+                          </>
+                      }
+                    </div>
+                  )}
+                  {submissionResult && !isSubmitting && (
+                    <SubmissionPanel submission={submissionResult} isLoading={false} />
+                  )}
+                </div>
+              )}
             </div>
           </div>
-          {activeResult === 'run' && runResult && !isRunning && (
-            <div className="border-t border-gray-800 bg-gray-900 p-4 max-h-48 overflow-y-auto shrink-0">
-              <p className="text-xs text-gray-400 mb-2">Run Result · {runResult.timeTakenMs}ms</p>
-              {runResult.compileError
-                ? <pre className="text-xs text-red-400 font-mono whitespace-pre-wrap">{runResult.compileError}</pre>
-                : <>
-                    {runResult.stdout && <div className="mb-2"><p className="text-xs text-gray-500 mb-1">Output:</p><pre className="bg-gray-800 rounded p-2 text-xs font-mono text-gray-200 whitespace-pre-wrap">{runResult.stdout}</pre></div>}
-                    {runResult.stderr && <div><p className="text-xs text-gray-500 mb-1">Stderr:</p><pre className="bg-gray-800 rounded p-2 text-xs font-mono text-red-400 whitespace-pre-wrap">{runResult.stderr}</pre></div>}
-                  </>
-              }
-            </div>
-          )}
-          {activeResult === 'submit' && (
-            <SubmissionPanel submission={submissionResult} isLoading={isSubmitting} />
-          )}
         </div>
       </div>
     </div>

@@ -1,64 +1,67 @@
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef } from 'react';
 
-export default function ResizableSplit({ left, right, defaultLeftPct = 45, minPct = 20, maxPct = 80 }) {
-  const containerRef = useRef(null);
-  const [leftPct, setLeftPct] = useState(defaultLeftPct);
-  const dragging = useRef(false);
+export function VDivider({ onDrag, containerRef }) {
+  const ref = useRef(null);
 
-  const onMouseDown = useCallback((e) => {
+  const onPointerDown = (e) => {
     e.preventDefault();
-    dragging.current = true;
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-  }, []);
+    ref.current.setPointerCapture(e.pointerId);
+  };
 
-  useEffect(() => {
-    const onMouseMove = (e) => {
-      if (!dragging.current || !containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      const pct = ((e.clientX - rect.left) / rect.width) * 100;
-      setLeftPct(Math.min(maxPct, Math.max(minPct, pct)));
-    };
+  const onPointerMove = (e) => {
+    if (!ref.current.hasPointerCapture(e.pointerId)) return;
+    const el = containerRef?.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const pct = Math.min(75, Math.max(20, ((e.clientX - rect.left) / rect.width) * 100));
+    onDrag(pct);
+  };
 
-    const onMouseUp = () => {
-      dragging.current = false;
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-    return () => {
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-    };
-  }, [minPct, maxPct]);
+  const onPointerUp = (e) => {
+    if (ref.current.hasPointerCapture(e.pointerId))
+      ref.current.releasePointerCapture(e.pointerId);
+  };
 
   return (
-    <div ref={containerRef} className="flex flex-1 overflow-hidden h-full">
-      {/* Left panel */}
-      <div style={{ width: `${leftPct}%` }} className="flex flex-col overflow-hidden">
-        {left}
-      </div>
+    <div
+      ref={ref}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      className="w-[5px] shrink-0 bg-gray-800 hover:bg-blue-500 active:bg-blue-500 cursor-col-resize transition-colors z-10 select-none"
+    />
+  );
+}
 
-      {/* Drag handle */}
-      <div
-        onMouseDown={onMouseDown}
-        className="w-1 shrink-0 bg-gray-800 hover:bg-blue-500 active:bg-blue-500 cursor-col-resize transition-colors relative group"
-        title="Drag to resize"
-      >
-        {/* Visual grip dots */}
-        <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 flex flex-col items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          {[0,1,2].map(i => (
-            <div key={i} className="w-1 h-1 rounded-full bg-blue-400" />
-          ))}
-        </div>
-      </div>
+export function HDivider({ onDrag, containerRef }) {
+  const ref = useRef(null);
 
-      {/* Right panel */}
-      <div style={{ width: `${100 - leftPct}%` }} className="flex flex-col overflow-hidden">
-        {right}
-      </div>
-    </div>
+  const onPointerDown = (e) => {
+    e.preventDefault();
+    ref.current.setPointerCapture(e.pointerId);
+  };
+
+  const onPointerMove = (e) => {
+    if (!ref.current.hasPointerCapture(e.pointerId)) return;
+    const el = containerRef?.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const pct = Math.min(85, Math.max(15, ((e.clientY - rect.top) / rect.height) * 100));
+    onDrag(pct);
+  };
+
+  const onPointerUp = (e) => {
+    if (ref.current.hasPointerCapture(e.pointerId))
+      ref.current.releasePointerCapture(e.pointerId);
+  };
+
+  return (
+    <div
+      ref={ref}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      className="h-[5px] shrink-0 bg-gray-800 hover:bg-blue-500 active:bg-blue-500 cursor-row-resize transition-colors z-10 select-none"
+    />
   );
 }

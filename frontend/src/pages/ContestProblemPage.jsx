@@ -1,21 +1,22 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  ArrowLeft, Clock, ChevronDown, ChevronUp, ChevronRight,
-  Terminal, Play, Send, Trophy, BarChart2, CheckCircle2,
-  XCircle, AlertTriangle, Maximize2, Minimize2, RotateCcw,
-  FileText, Code2, List
+  ArrowLeft, Clock,
+  Play, Send, Trophy, CheckCircle2,
+  XCircle, AlertTriangle, RotateCcw, Maximize2, Minimize2,
+  FileText, List
 } from 'lucide-react';
 import { getProblem } from '../api/problemApi';
 import { getContest, submitInContest, getContestLeaderboard } from '../api/contestApi';
 import { runCode, getSubmission } from '../api/submissionApi';
-import CodeEditor, { DEFAULT_TEMPLATES } from '../components/Editor/CodeEditor';
+import CodeEditor from '../components/Editor/CodeEditor';
 import SubmissionPanel from '../components/Editor/SubmissionPanel';
 import DifficultyBadge from '../components/Problem/DifficultyBadge';
 import useAuthStore from '../store/authStore';
 import useEditorSession from '../hooks/useEditorSession';
 import toast from 'react-hot-toast';
+import { VDivider, HDivider } from '../components/Layout/ResizableSplit';
 
 const LANGUAGES = [
   { value: 'python', label: 'Python 3' },
@@ -116,13 +117,20 @@ export default function ContestProblemPage() {
   const { user } = useAuthStore();
   const qc = useQueryClient();
 
+  const containerRef = useRef(null);
+  const rightRef = useRef(null);
+  const [leftPct, setLeftPct] = useState(42);
+  const [editorPct, setEditorPct] = useState(65);
+
+  const handleVDrag = useCallback((pct) => setLeftPct(pct), []);
+  const handleHDrag = useCallback((pct) => setEditorPct(pct), []);
+
   const [customInput, setCustomInput] = useState('');
-  const [showCustomInput, setShowCustomInput] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [runResult, setRunResult] = useState(null);
   const [submissionResult, setSubmissionResult] = useState(null);
-  const [activeResult, setActiveResult] = useState(null);
+  const [activeResult, setActiveResult] = useState('testcase');
   const [leftTab, setLeftTab] = useState('problem');
   const [rightPanel, setRightPanel] = useState('editor');
   const [editorFullscreen, setEditorFullscreen] = useState(false);
@@ -310,11 +318,11 @@ export default function ContestProblemPage() {
       </div>
 
       {/* ── Main Content ── */}
-      <div className={`flex flex-1 overflow-hidden ${editorFullscreen ? 'flex-row-reverse' : ''}`}>
+      <div ref={containerRef} className="flex flex-1 overflow-hidden">
 
         {/* LEFT PANEL */}
         {!editorFullscreen && (
-          <div className="w-full md:w-[42%] flex flex-col border-r border-gray-800 overflow-hidden">
+          <div className="flex flex-col border-r border-gray-800 overflow-hidden shrink-0" style={{ width: `${leftPct}%` }}>
 
             {/* Left Tabs */}
             <div className="flex border-b border-gray-800 bg-gray-900 shrink-0">
@@ -460,32 +468,35 @@ export default function ContestProblemPage() {
           </div>
         )}
 
+        {/* Vertical drag handle */}
+        {!editorFullscreen && (
+          <div className="hidden md:block">
+            <VDivider onDrag={handleVDrag} containerRef={containerRef} />
+          </div>
+        )}
+
         {/* RIGHT PANEL */}
-        <div className="hidden md:flex flex-col flex-1 overflow-hidden">
+        <div ref={rightRef} className="flex flex-col overflow-hidden" style={{ width: `${100 - leftPct}%` }}>
 
           {/* Editor Toolbar */}
           <div className="flex items-center justify-between px-3 py-1.5 bg-gray-900 border-b border-gray-800 shrink-0">
             <div className="flex items-center gap-2">
-              {/* Problem switcher */}
               <button onClick={() => setRightPanel(p => p === 'problems' ? 'editor' : 'problems')}
                 className={`flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors ${
                   rightPanel === 'problems' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800'
                 }`}>
                 <List size={12} /> Problems
               </button>
-
               <select value={language} onChange={e => handleLanguageChange(e.target.value)}
                 className="bg-gray-800 text-white text-xs px-2 py-1 rounded border border-gray-700 focus:outline-none">
                 {LANGUAGES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
               </select>
-
               {language === 'java' && (
                 <span className="text-xs text-yellow-400 bg-yellow-400/10 px-2 py-0.5 rounded">
                   class must be <code>Main</code>
                 </span>
               )}
             </div>
-
             <div className="flex items-center gap-1">
               <button onClick={handleReset} title="Reset to template"
                 className="p-1.5 text-gray-500 hover:text-white hover:bg-gray-800 rounded transition-colors">
@@ -506,88 +517,83 @@ export default function ContestProblemPage() {
           )}
 
           {/* Editor */}
-          <div className="flex-1 overflow-hidden">
+          <div style={{ height: `${editorPct}%` }} className="overflow-hidden shrink-0 min-h-0">
             <CodeEditor value={code} onChange={setCode} language={language} height="100%" />
           </div>
 
-          {/* Custom Input */}
-          {showCustomInput && (
-            <div className="border-t border-gray-800 bg-gray-900 p-3 shrink-0">
-              <p className="text-xs text-gray-400 mb-1">Stdin (Custom Input)</p>
-              <textarea rows={3} value={customInput} onChange={e => setCustomInput(e.target.value)}
-                className="w-full bg-gray-800 text-white text-xs font-mono px-3 py-2 rounded-lg border border-gray-700 focus:outline-none resize-none" />
-            </div>
-          )}
+          {/* Horizontal drag handle */}
+          <HDivider onDrag={handleHDrag} containerRef={rightRef} />
 
-          {/* Action Bar */}
-          <div className="flex items-center justify-between px-4 py-2 bg-gray-900 border-t border-gray-800 shrink-0">
-            <button onClick={() => setShowCustomInput(s => !s)}
-              className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition-colors">
-              <Terminal size={12} />
-              {showCustomInput ? 'Hide' : 'Testcase'}
-              {showCustomInput ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
-            </button>
-            <div className="flex gap-2">
-              <button onClick={handleRun} disabled={isRunning || isSubmitting}
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-white text-sm rounded-lg transition-colors">
-                <Play size={13} /> {isRunning ? 'Running...' : 'Run'}
-              </button>
-              {isEnded ? (
-                <button disabled className="flex items-center gap-1.5 px-4 py-1.5 bg-gray-700 text-gray-500 text-sm rounded-lg cursor-not-allowed">
-                  <AlertTriangle size={13} /> Ended
+          {/* Bottom panel */}
+          <div className="flex flex-col overflow-hidden bg-gray-900" style={{ height: `${100 - editorPct}%` }}>
+            {/* Bottom tabs + Run/Submit */}
+            <div className="flex items-center border-b border-gray-800 shrink-0 px-2 bg-gray-950">
+              {[['testcase', 'Testcase'], ['result', 'Test Result']].map(([val, label]) => (
+                <button key={val} onClick={() => setActiveResult(val)}
+                  className={`px-4 py-2.5 text-xs font-medium transition-colors ${activeResult === val ? 'text-white border-b-2 border-blue-500' : 'text-gray-400 hover:text-white'}`}>
+                  {label}
                 </button>
-              ) : (
-                <button onClick={handleSubmit} disabled={isRunning || isSubmitting}
-                  className="flex items-center gap-1.5 px-4 py-1.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm rounded-lg transition-colors">
-                  <Send size={13} /> {isSubmitting ? 'Judging...' : 'Submit'}
+              ))}
+              <div className="ml-auto flex gap-2 pr-1 py-1">
+                <button onClick={handleRun} disabled={isRunning || isSubmitting}
+                  className="flex items-center gap-1.5 px-4 py-1.5 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-white text-xs rounded-lg font-medium transition-colors">
+                  <Play size={11} /> {isRunning ? 'Running...' : 'Run'}
                 </button>
-              )}
-            </div>
-          </div>
-
-          {/* Results */}
-          {activeResult === 'run' && runResult && !isRunning && (
-            <div className="border-t border-gray-800 bg-gray-900 p-3 max-h-44 overflow-y-auto shrink-0">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs text-gray-400">Output</p>
-                <span className="text-xs text-gray-500">{runResult.timeTakenMs}ms</span>
+                {isEnded ? (
+                  <button disabled className="flex items-center gap-1.5 px-4 py-1.5 bg-gray-700 text-gray-500 text-xs rounded-lg cursor-not-allowed">
+                    <AlertTriangle size={11} /> Ended
+                  </button>
+                ) : (
+                  <button onClick={handleSubmit} disabled={isRunning || isSubmitting}
+                    className="flex items-center gap-1.5 px-4 py-1.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-xs rounded-lg font-medium transition-colors">
+                    <Send size={11} /> {isSubmitting ? 'Judging...' : 'Submit'}
+                  </button>
+                )}
               </div>
-              {runResult.compileError ? (
-                <pre className="text-xs text-red-400 font-mono whitespace-pre-wrap">{runResult.compileError}</pre>
-              ) : (
-                <>
-                  {runResult.stdout && (
-                    <pre className="bg-gray-800 rounded p-2 text-xs font-mono text-gray-200 whitespace-pre-wrap mb-2">{runResult.stdout}</pre>
-                  )}
-                  {runResult.stderr && (
-                    <pre className="bg-gray-800 rounded p-2 text-xs font-mono text-red-400 whitespace-pre-wrap">{runResult.stderr}</pre>
-                  )}
-                  {!runResult.stdout && !runResult.stderr && (
-                    <p className="text-xs text-gray-500">(no output)</p>
-                  )}
-                </>
-              )}
             </div>
-          )}
 
-          {activeResult === 'submit' && (
-            <div className="shrink-0">
-              <SubmissionPanel submission={submissionResult} isLoading={isSubmitting} />
-              {submissionResult?.status === 'accepted' && pointsEarned && (
-                <div className="px-4 py-3 bg-green-400/5 border-t border-green-400/20 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 size={14} className="text-green-400" />
-                    <span className="text-sm font-bold text-green-400">+{pointsEarned} points earned!</span>
-                  </div>
-                  {solvedTimeSec !== null && (
-                    <span className="text-xs text-gray-500">
-                      at {pad(Math.floor(solvedTimeSec / 60))}:{pad(solvedTimeSec % 60)}
-                    </span>
+            <div className="flex-1 overflow-y-auto p-3">
+              {activeResult === 'testcase' && (
+                <div>
+                  <p className="text-xs text-gray-400 mb-2">Custom Input (stdin)</p>
+                  <textarea rows={4} value={customInput} onChange={e => setCustomInput(e.target.value)}
+                    className="w-full bg-gray-800 text-white text-xs font-mono px-3 py-2 rounded-lg border border-gray-700 focus:outline-none resize-none" />
+                </div>
+              )}
+              {activeResult === 'run' && runResult && !isRunning && (
+                <div>
+                  <p className="text-xs text-gray-400 mb-2">Output · {runResult.timeTakenMs}ms</p>
+                  {runResult.compileError
+                    ? <pre className="text-xs text-red-400 font-mono whitespace-pre-wrap">{runResult.compileError}</pre>
+                    : <>
+                        {runResult.stdout && <pre className="bg-gray-800 rounded p-2 text-xs font-mono text-gray-200 whitespace-pre-wrap mb-2">{runResult.stdout}</pre>}
+                        {runResult.stderr && <pre className="bg-gray-800 rounded p-2 text-xs font-mono text-red-400 whitespace-pre-wrap">{runResult.stderr}</pre>}
+                        {!runResult.stdout && !runResult.stderr && <p className="text-xs text-gray-500">(no output)</p>}
+                      </>
+                  }
+                </div>
+              )}
+              {activeResult === 'submit' && (
+                <div>
+                  <SubmissionPanel submission={submissionResult} isLoading={isSubmitting} />
+                  {submissionResult?.status === 'accepted' && pointsEarned && (
+                    <div className="px-4 py-3 bg-green-400/5 border border-green-400/20 rounded-lg mt-2 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 size={14} className="text-green-400" />
+                        <span className="text-sm font-bold text-green-400">+{pointsEarned} points!</span>
+                      </div>
+                      {solvedTimeSec !== null && (
+                        <span className="text-xs text-gray-500">at {pad(Math.floor(solvedTimeSec/60))}:{pad(solvedTimeSec%60)}</span>
+                      )}
+                    </div>
                   )}
                 </div>
               )}
+              {!runResult && !submissionResult && !isRunning && !isSubmitting && activeResult !== 'testcase' && (
+                <p className="text-sm text-gray-500 text-center py-8">Run your code first</p>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>
