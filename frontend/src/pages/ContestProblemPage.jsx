@@ -14,6 +14,7 @@ import CodeEditor, { DEFAULT_TEMPLATES } from '../components/Editor/CodeEditor';
 import SubmissionPanel from '../components/Editor/SubmissionPanel';
 import DifficultyBadge from '../components/Problem/DifficultyBadge';
 import useAuthStore from '../store/authStore';
+import useEditorSession from '../hooks/useEditorSession';
 import toast from 'react-hot-toast';
 
 const LANGUAGES = [
@@ -115,8 +116,6 @@ export default function ContestProblemPage() {
   const { user } = useAuthStore();
   const qc = useQueryClient();
 
-  const [language, setLanguage] = useState('python');
-  const [code, setCode] = useState(DEFAULT_TEMPLATES.python);
   const [customInput, setCustomInput] = useState('');
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
@@ -124,8 +123,8 @@ export default function ContestProblemPage() {
   const [runResult, setRunResult] = useState(null);
   const [submissionResult, setSubmissionResult] = useState(null);
   const [activeResult, setActiveResult] = useState(null);
-  const [leftTab, setLeftTab] = useState('problem'); // problem | submissions | leaderboard
-  const [rightPanel, setRightPanel] = useState('editor'); // editor | problems
+  const [leftTab, setLeftTab] = useState('problem');
+  const [rightPanel, setRightPanel] = useState('editor');
   const [editorFullscreen, setEditorFullscreen] = useState(false);
   const [submissionHistory, setSubmissionHistory] = useState([]);
   const pollRef = useRef(null);
@@ -141,6 +140,11 @@ export default function ContestProblemPage() {
     queryFn: () => getProblem(problemSlug)
   });
 
+  const problem = problemData?.data;
+
+  // Persistent editor session — survives refresh, keyed by problemId
+  const { language, setLanguage, code, setCode, reset: resetCode } = useEditorSession(problem?._id);
+
   useEffect(() => () => clearInterval(pollRef.current), []);
 
   // Cache contest endTime in localStorage for instant timer on load
@@ -152,15 +156,12 @@ export default function ContestProblemPage() {
 
   // Pre-fill custom input
   useEffect(() => {
-    const problem = problemData?.data;
     if (problem?.sampleTestCases?.[0]?.input) setCustomInput(problem.sampleTestCases[0].input);
     else if (problem?.examples?.[0]?.input) setCustomInput(problem.examples[0].input);
-  }, [problemData]);
+  }, [problem?._id]);
 
   const contest = contestData?.data;
-  const problem = problemData?.data;
   const isEnded = contest?.status === 'ended';
-  // Use cached endTime for instant timer before contest data loads
   const contestEndTime = contest?.endTime || localStorage.getItem(`contest_end_${contestSlug}`);
   const timer = useCountdown(contestEndTime);
   const isRedTimer = timer.total < 600000 && !isEnded;
@@ -170,15 +171,10 @@ export default function ContestProblemPage() {
     p => p.problemId?.slug === problemSlug || p.problemId?._id?.toString() === problem?._id?.toString()
   );
 
-  const handleLanguageChange = (lang) => {
-    setLanguage(lang);
-    setCode(DEFAULT_TEMPLATES[lang] || '');
-  };
+  const handleLanguageChange = (lang) => setLanguage(lang);
 
   const handleReset = () => {
-    if (window.confirm('Reset code to template?')) {
-      setCode(DEFAULT_TEMPLATES[language] || '');
-    }
+    if (window.confirm('Reset code to template?')) resetCode();
   };
 
   const handleRun = async () => {

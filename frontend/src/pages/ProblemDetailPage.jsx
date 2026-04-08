@@ -6,8 +6,9 @@ import { getProblem } from '../api/problemApi';
 import { submitCode, runCode, getSubmission, getMySubmissions } from '../api/submissionApi';
 import CodeEditor, { DEFAULT_TEMPLATES } from '../components/Editor/CodeEditor';
 import SubmissionPanel from '../components/Editor/SubmissionPanel';
-import DifficultyBadge from '../components/Problem/DifficultyBadge';
-import toast from 'react-hot-toast';
+import useEditorSession from '../hooks/useEditorSession';
+
+
 
 const LANGUAGES = [
   { value: 'python', label: 'Python' },
@@ -82,15 +83,13 @@ export default function ProblemDetailPage() {
   const { slug } = useParams();
   const [activeTab, setActiveTab] = useState('description');
   const [mobilePanel, setMobilePanel] = useState('problem'); // 'problem' | 'code'
-  const [language, setLanguage] = useState('python');
-  const [code, setCode] = useState(DEFAULT_TEMPLATES.python);
   const [customInput, setCustomInput] = useState('');
-  const [showCustomInput, setShowCustomInput] = useState(true); // show by default like LeetCode
+  const [showCustomInput, setShowCustomInput] = useState(true);
   const [isRunning, setIsRunning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [runResult, setRunResult] = useState(null);
   const [submissionResult, setSubmissionResult] = useState(null);
-  const [activeResult, setActiveResult] = useState(null); // 'run' | 'submit'
+  const [activeResult, setActiveResult] = useState(null);
   const pollRef = useRef(null);
 
   const { data, isLoading, isError } = useQuery({
@@ -100,11 +99,10 @@ export default function ProblemDetailPage() {
 
   const problem = data?.data;
 
-  // Language change → reset to template
-  const handleLanguageChange = (lang) => {
-    setLanguage(lang);
-    setCode(DEFAULT_TEMPLATES[lang] || '');
-  };
+  // Persistent editor session — survives refresh
+  const { language, setLanguage, code, setCode, reset: resetCode } = useEditorSession(problem?._id);
+
+  const handleLanguageChange = (lang) => setLanguage(lang);
 
   // Cleanup polling on unmount
   useEffect(() => () => clearInterval(pollRef.current), []);

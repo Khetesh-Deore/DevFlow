@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import queryClient from '../api/queryClient';
 
 const useAuthStore = create((set) => ({
   user: null,
@@ -8,15 +9,13 @@ const useAuthStore = create((set) => ({
 
   login: (userData, token) => {
     localStorage.setItem('token', token);
-    // Clear React Query cache so previous user's data is gone
-    import('../App').then(({ queryClient }) => queryClient.clear());
+    queryClient.clear();
     set({ user: userData, token, isAuthenticated: true });
   },
 
   logout: () => {
     localStorage.removeItem('token');
-    // Clear React Query cache on logout
-    import('../App').then(({ queryClient }) => queryClient.clear());
+    queryClient.clear();
     set({ user: null, token: null, isAuthenticated: false });
   },
 
