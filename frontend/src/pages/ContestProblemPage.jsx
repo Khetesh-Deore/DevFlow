@@ -528,7 +528,11 @@ export default function ContestProblemPage() {
         )}
 
         {/* RIGHT PANEL */}
-        <div ref={rightRef} className="flex flex-col overflow-hidden" style={{ width: `${100 - leftPct}%` }}>
+        <div 
+          ref={rightRef} 
+          className={`flex flex-col overflow-hidden ${editorFullscreen ? 'fixed inset-0 z-50 bg-gray-950' : ''}`}
+          style={editorFullscreen ? {} : { width: `${100 - leftPct}%` }}
+        >
 
           {/* Editor Toolbar */}
           <div className="flex items-center justify-between px-3 py-1.5 bg-gray-900 border-b border-gray-800 shrink-0">
@@ -639,9 +643,9 @@ export default function ContestProblemPage() {
                         Case {i + 1}
                       </button>
                     ))}
-                    <button className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-400 text-xs rounded-lg font-medium transition-colors shrink-0">
+                    {/* <button className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-400 text-xs rounded-lg font-medium transition-colors shrink-0">
                       +
-                    </button>
+                    </button> */}
                   </div>
 
                   {/* Show selected test case input */}
