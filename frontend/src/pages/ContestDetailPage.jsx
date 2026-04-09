@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { io } from 'socket.io-client';
 import {
@@ -36,6 +36,7 @@ function useCountdown(target) {
 
 // ─── Leaderboard ─────────────────────────────────────────────────────────────
 function LiveLeaderboard({ slug, problems = [], isLive, currentUserId }) {
+  const navigate = useNavigate();
   const { data, isLoading } = useQuery({
     queryKey: ['contest-leaderboard', slug],
     queryFn: () => getContestLeaderboard(slug),
@@ -78,6 +79,7 @@ function LiveLeaderboard({ slug, problems = [], isLive, currentUserId }) {
           {rows.map((row) => {
             const isMe = currentUserId && row.userId?.toString() === currentUserId?.toString();
             const rankColors = { 1: 'text-yellow-400', 2: 'text-gray-300', 3: 'text-orange-400' };
+            const userIdentifier = row.user?.rollNumber || row.userId;
             return (
               <tr key={row.userId}
                 className={`border-b border-gray-800/40 transition-colors ${isMe ? 'bg-blue-500/10' : 'hover:bg-gray-800/30'}`}>
@@ -87,11 +89,17 @@ function LiveLeaderboard({ slug, problems = [], isLive, currentUserId }) {
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <div className="font-medium text-white flex items-center gap-2">
-                    {row.user?.name || '—'}
-                    {isMe && <span className="text-xs text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded">you</span>}
-                  </div>
-                  <div className="text-xs text-gray-500">{row.user?.rollNumber}</div>
+                  <button
+                    onClick={() => navigate(`/profile/${userIdentifier}`)}
+                    className="text-left hover:underline"
+                    title={`View ${row.user?.name}'s profile`}
+                  >
+                    <div className="font-medium text-white flex items-center gap-2">
+                      {row.user?.name || '—'}
+                      {isMe && <span className="text-xs text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded">you</span>}
+                    </div>
+                    <div className="text-xs text-gray-500">{row.user?.rollNumber}</div>
+                  </button>
                 </td>
                 {problems.slice(0, 5).map(p => {
                   const pid = p.problemId?._id?.toString() || p.problemId?.toString();

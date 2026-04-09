@@ -42,6 +42,7 @@ function useCountdown(target) {
 
 // ─── Mini Leaderboard Panel ───────────────────────────────────────────────────
 function MiniLeaderboard({ slug, currentUserId }) {
+  const navigate = useNavigate();
   const { data } = useQuery({
     queryKey: ['contest-leaderboard', slug],
     queryFn: () => getContestLeaderboard(slug),
@@ -53,18 +54,23 @@ function MiniLeaderboard({ slug, currentUserId }) {
       {rows.length === 0 && <p className="text-gray-500 text-center py-4">No submissions yet</p>}
       {rows.map(row => {
         const isMe = currentUserId && row.userId?.toString() === currentUserId?.toString();
+        const userIdentifier = row.user?.rollNumber || row.userId;
         return (
           <div key={row.userId}
             className={`flex items-center justify-between px-3 py-2 border-b border-gray-800/50 ${isMe ? 'bg-blue-500/10' : 'hover:bg-gray-800/30'}`}>
-            <div className="flex items-center gap-2">
-              <span className={`font-bold w-5 ${row.rank === 1 ? 'text-yellow-400' : row.rank === 2 ? 'text-gray-300' : row.rank === 3 ? 'text-orange-400' : 'text-gray-500'}`}>
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <span className={`font-bold w-5 shrink-0 ${row.rank === 1 ? 'text-yellow-400' : row.rank === 2 ? 'text-gray-300' : row.rank === 3 ? 'text-orange-400' : 'text-gray-500'}`}>
                 {row.rank}
               </span>
-              <span className={`truncate max-w-[100px] ${isMe ? 'text-blue-300 font-medium' : 'text-gray-300'}`}>
+              <button
+                onClick={() => navigate(`/profile/${userIdentifier}`)}
+                className={`truncate max-w-[100px] text-left hover:underline ${isMe ? 'text-blue-300 font-medium' : 'text-gray-300'}`}
+                title={`View ${row.user?.name}'s profile`}
+              >
                 {row.user?.name || '—'}
-              </span>
+              </button>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <span className="text-gray-500">{row.solvedCount}✓</span>
               <span className="text-yellow-400 font-bold">{row.totalPoints}</span>
             </div>
