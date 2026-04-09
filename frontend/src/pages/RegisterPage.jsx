@@ -85,14 +85,14 @@ export default function RegisterPage() {
             <div>
               <label className="block text-sm text-gray-400 mb-1">Email</label>
               <input type="email" value={form.email} onChange={set('email')}
-                placeholder="you@college.edu" className={inputClass} />
+                placeholder="you@kkwagh.edu.in" className={inputClass} />
             </div>
 
             {/* Roll Number */}
             <div>
               <label className="block text-sm text-gray-400 mb-1">Roll Number</label>
               <input type="text" value={form.rollNumber} onChange={set('rollNumber')}
-                placeholder="21CSE001" className={inputClass} />
+                placeholder="3723011043" className={inputClass} />
             </div>
 
             {/* Branch + Batch */}
