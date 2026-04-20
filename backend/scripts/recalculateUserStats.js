@@ -10,11 +10,29 @@ const recalculateUserStats = async () => {
     console.log('\n🔄 Recalculating All User Stats\n');
     console.log('='.repeat(70));
 
+    // Check if MONGO_URI exists
+    if (!process.env.MONGO_URI) {
+      throw new Error('MONGO_URI not found in environment variables');
+    }
+
+    console.log('📡 Connecting to MongoDB...');
     await mongoose.connect(process.env.MONGO_URI);
     console.log('✅ Connected to MongoDB\n');
 
+    // Check database name
+    const dbName = mongoose.connection.db.databaseName;
+    console.log(`📦 Database: ${dbName}\n`);
+
     const users = await User.find({});
     console.log(`📊 Found ${users.length} users to process\n`);
+
+    if (users.length === 0) {
+      console.log('⚠️  No users found in database. Please check:');
+      console.log('   1. Database connection is correct');
+      console.log('   2. Users collection exists');
+      console.log('   3. You have created at least one user\n');
+      process.exit(0);
+    }
 
     let updated = 0;
     let skipped = 0;
@@ -45,9 +63,9 @@ const recalculateUserStats = async () => {
       const contestPoints = contestSubs.reduce((sum, s) => sum + (s.points || 0), 0);
 
       // Calculate streak (keep existing if valid, otherwise reset)
-      let streak = user.stats.streak || 0;
-      let maxStreak = user.stats.maxStreak || 0;
-      let lastSolvedDate = user.stats.lastSolvedDate;
+      let streak = user.stats?.streak || 0;
+      let maxStreak = user.stats?.maxStreak || 0;
+      let lastSolvedDate = user.stats?.lastSolvedDate;
 
       if (lastSolvedDate) {
         const today = new Date();
@@ -66,20 +84,19 @@ const recalculateUserStats = async () => {
       maxStreak = Math.max(maxStreak, streak);
 
       // Update user stats
-      user.stats = {
-        totalSolved,
-        easySolved,
-        mediumSolved,
-        hardSolved,
-        totalSubmissions: allSubmissions.length,
-        acceptedSubmissions: acceptedSubmissions.length,
-        points: contestPoints,
-        streak,
-        maxStreak,
-        lastSolvedDate
-      };
+      if (!user.stats) user.stats = {};
+      user.stats.totalSolved = totalSolved;
+      user.stats.easySolved = easySolved;
+      user.stats.mediumSolved = mediumSolved;
+      user.stats.hardSolved = hardSolved;
+      user.stats.totalSubmissions = allSubmissions.length;
+      user.stats.acceptedSubmissions = acceptedSubmissions.length;
+      user.stats.points = contestPoints;
+      user.stats.streak = streak;
+      user.stats.maxStreak = maxStreak;
+      user.stats.lastSolvedDate = lastSolvedDate;
 
-      user.solvedProblems = uniqueSolvedIds.map(id => mongoose.Types.ObjectId(id));
+      user.solvedProblems = uniqueSolvedIds.map(id => new mongoose.Types.ObjectId(id));
 
       await user.save();
 
@@ -110,7 +127,8 @@ const recalculateUserStats = async () => {
 
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error:', error);
+    console.error('❌ Error:', error.message);
+    console.error('Stack:', error.stack);
     process.exit(1);
   }
 };

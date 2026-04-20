@@ -32,6 +32,7 @@ const contestSchema = new mongoose.Schema(
 );
 
 contestSchema.virtual('status').get(function () {
+  if (!this.startTime || !this.endTime) return 'upcoming';
   const now = Date.now();
   if (now < this.startTime.getTime()) return 'upcoming';
   if (now < this.endTime.getTime()) return 'live';
