@@ -1,3 +1,15 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ── Contest: disable screen capture (supported in Chrome 94+) ── */
+.contest-active {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+@media print {
+  .contest-active {
+    display: none !important;
+  }
+}

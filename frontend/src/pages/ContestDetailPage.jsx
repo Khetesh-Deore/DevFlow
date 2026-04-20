@@ -539,7 +539,7 @@ export default function ContestDetailPage() {
       {/* ── Fullscreen Modal ── */}
       {fsModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center px-4">
-          <div className="bg-gray-900 border border-gray-700 rounded-2xl p-7 w-full max-w-md shadow-2xl">
+          <div className="bg-gray-900 border border-gray-700 rounded-2xl p-5 w-full max-w-lg shadow-2xl">
 
             {fsModal === 'banned' ? (
               <>
@@ -558,40 +558,66 @@ export default function ContestDetailPage() {
               </>
             ) : fsModal === 'request' ? (
               <>
-                <div className="flex items-center justify-center w-14 h-14 rounded-full bg-blue-500/10 border border-blue-500/30 mx-auto mb-4">
-                  <Maximize2 size={26} className="text-blue-400" />
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex items-center justify-center w-11 h-11 rounded-full bg-blue-500/10 border border-blue-500/30 shrink-0">
+                    <Maximize2 size={22} className="text-blue-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-white">Before You Enter</h2>
+                    <p className="text-sm text-gray-400">Read all rules. Violations are tracked automatically.</p>
+                  </div>
                 </div>
 
-                <h2 className="text-xl font-bold text-center text-white mb-3">Contest Rules & Requirements</h2>
+                <div className="grid grid-cols-2 gap-3 mb-4">
 
-                <div className="bg-gray-800/50 rounded-lg p-4 mb-4 text-left">
-                  <h3 className="text-sm font-semibold text-blue-400 mb-2 flex items-center gap-2">
-                    <AlertCircle size={14} /> Important Instructions
-                  </h3>
-                  <ul className="text-xs text-gray-300 space-y-2">
-                    <li className="flex items-start gap-2">
-                      <span className="text-blue-400 shrink-0">•</span>
-                      <span><strong className="text-white">Fullscreen Mode:</strong> You must stay in fullscreen throughout the contest</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-orange-400 shrink-0">•</span>
-                      <span><strong className="text-white">3 Strike Policy:</strong> Exiting fullscreen 3 times will ban you from the contest</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-yellow-400 shrink-0">•</span>
-                      <span><strong className="text-white">No Copy/Paste:</strong> Copy-paste is disabled during the contest</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-green-400 shrink-0">•</span>
-                      <span><strong className="text-white">Fair Play:</strong> Write your own code and follow contest rules</span>
-                    </li>
-                  </ul>
-                </div>
+                  {/* Fullscreen */}
+                  <div className="bg-gray-800/60 rounded-xl p-3 border border-gray-700/50">
+                    <p className="text-xs font-bold text-blue-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      <Maximize2 size={11} /> Fullscreen
+                    </p>
+                    <ul className="text-sm text-gray-300 space-y-1.5">
+                      <li className="flex items-start gap-2"><span className="text-blue-400 shrink-0">→</span> Stay fullscreen the entire contest</li>
+                      <li className="flex items-start gap-2"><span className="text-blue-400 shrink-0">→</span> <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-white font-mono text-xs">ESC</kbd> / <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-white font-mono text-xs">F11</kbd> = violation</li>
+                      <li className="flex items-start gap-2"><span className="text-blue-400 shrink-0">→</span> Auto-restored in 2 seconds</li>
+                    </ul>
+                  </div>
 
-                <div className="bg-yellow-400/10 border border-yellow-400/30 rounded-lg p-3 mb-4">
-                  <p className="text-xs text-yellow-400 text-center">
-                    ⚠️ Press <kbd className="px-1.5 py-0.5 bg-gray-800 rounded text-white font-mono">ESC</kbd> or <kbd className="px-1.5 py-0.5 bg-gray-800 rounded text-white font-mono">F11</kbd> to exit fullscreen will count as a violation
-                  </p>
+                  {/* Tab/Window Switch */}
+                  <div className="bg-gray-800/60 rounded-xl p-3 border border-gray-700/50">
+                    <p className="text-xs font-bold text-orange-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      <AlertCircle size={11} /> Tab / App Switch
+                    </p>
+                    <ul className="text-sm text-gray-300 space-y-1.5">
+                      <li className="flex items-start gap-2"><span className="text-orange-400 shrink-0">→</span> Switching browser tabs = violation</li>
+                      <li className="flex items-start gap-2"><span className="text-orange-400 shrink-0">→</span> Alt+Tab to another app = violation</li>
+                      <li className="flex items-start gap-2"><span className="text-orange-400 shrink-0">→</span> Virtual desktop switch = violation</li>
+                    </ul>
+                  </div>
+
+                  {/* 3-Strike Policy */}
+                  <div className="bg-red-500/5 rounded-xl p-3 border border-red-500/20">
+                    <p className="text-xs font-bold text-red-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      <Lock size={11} /> 3-Strike Policy
+                    </p>
+                    <ul className="text-sm space-y-1.5">
+                      <li className="flex items-start gap-2"><span className="text-yellow-400 font-bold shrink-0">1.</span><span className="text-yellow-400">1st — Warning, you may continue</span></li>
+                      <li className="flex items-start gap-2"><span className="text-orange-400 font-bold shrink-0">2.</span><span className="text-orange-400">2nd — Final warning</span></li>
+                      <li className="flex items-start gap-2"><span className="text-red-400 font-bold shrink-0">3.</span><span className="text-red-400">3rd — Permanent ban, no appeal</span></li>
+                    </ul>
+                  </div>
+
+                  {/* Prohibited */}
+                  <div className="bg-gray-800/60 rounded-xl p-3 border border-gray-700/50">
+                    <p className="text-xs font-bold text-yellow-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      <Lock size={11} /> Prohibited
+                    </p>
+                    <ul className="text-sm text-gray-300 space-y-1.5">
+                      <li className="flex items-start gap-2"><span className="text-red-400 shrink-0">✕</span> Copy / Paste / Cut</li>
+                      <li className="flex items-start gap-2"><span className="text-red-400 shrink-0">✕</span> Screenshots (all methods)</li>
+                      <li className="flex items-start gap-2"><span className="text-red-400 shrink-0">✕</span> Right-click / context menu</li>
+                      <li className="flex items-start gap-2"><span className="text-red-400 shrink-0">✕</span> AI tools / external help</li>
+                    </ul>
+                  </div>
                 </div>
 
                 <div className="flex gap-3">

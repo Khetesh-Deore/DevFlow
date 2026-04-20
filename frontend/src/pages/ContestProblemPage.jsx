@@ -199,24 +199,47 @@ export default function ContestProblemPage() {
   const isRedTimer = timer.total < 600000 && !isEnded;
   const isWarning = timer.total < 1800000 && !isEnded;
 
-  // Prevent copy-paste during live contests
+  // Prevent copy-paste and screenshots during live contests
   useEffect(() => {
     if (isEnded) return;
 
     const preventCopyPaste = (e) => {
+      // Block copy/paste/cut
       if (e.ctrlKey && (e.key === 'c' || e.key === 'v' || e.key === 'x')) {
         e.preventDefault();
         toast.error('Copy/Paste is disabled during contests', { duration: 2000 });
+        return;
+      }
+      // Block PrintScreen (screenshot)
+      if (e.key === 'PrintScreen' || e.code === 'PrintScreen') {
+        e.preventDefault();
+        // Clear clipboard immediately in case OS already captured it
+        navigator.clipboard?.writeText('').catch(() => {});
+        toast.error('Screenshots are disabled during contests', { duration: 2000, id: 'screenshot' });
+        return;
+      }
+      // Block Windows Snipping Tool: Win+Shift+S
+      if (e.shiftKey && e.metaKey && e.key === 's') {
+        e.preventDefault();
+        toast.error('Screenshots are disabled during contests', { duration: 2000, id: 'screenshot' });
+        return;
+      }
+      // Block Mac screenshot shortcuts: Cmd+Shift+3, Cmd+Shift+4, Cmd+Shift+5
+      if (e.metaKey && e.shiftKey && (e.key === '3' || e.key === '4' || e.key === '5')) {
+        e.preventDefault();
+        toast.error('Screenshots are disabled during contests', { duration: 2000, id: 'screenshot' });
+        return;
       }
     };
 
-    const preventContextMenu = (e) => {
-      e.preventDefault();
-    };
-
+    const preventContextMenu = (e) => e.preventDefault();
     const preventCopy = (e) => e.preventDefault();
     const preventPaste = (e) => e.preventDefault();
     const preventCut = (e) => e.preventDefault();
+
+    // Apply CSS to prevent screen capture via CSS (supported in some browsers)
+    document.body.style.userSelect = 'none';
+    document.body.style.webkitUserSelect = 'none';
 
     document.addEventListener('keydown', preventCopyPaste);
     document.addEventListener('contextmenu', preventContextMenu);
@@ -230,19 +253,30 @@ export default function ContestProblemPage() {
       document.removeEventListener('copy', preventCopy);
       document.removeEventListener('paste', preventPaste);
       document.removeEventListener('cut', preventCut);
+      document.body.style.userSelect = '';
+      document.body.style.webkitUserSelect = '';
     };
   }, [isEnded]);
 
   // ── Fullscreen violation monitoring ──
   const VIOLATION_KEY = `fs_violations_${contestSlug}`;
-  const [fsWarningModal, setFsWarningModal] = useState(null); // null | 'warn1' | 'warn2' | 'banned'
+  const [fsWarningModal, setFsWarningModal] = useState(null);
   const [fsViolations, setFsViolations] = useState(() => parseInt(localStorage.getItem(`fs_violations_${contestSlug}`) || '0', 10));
+  const [reenterCountdown, setReenterCountdown] = useState(0); // visible countdown
   const navigate = useNavigate();
   const intentionalExitRef = useRef(false);
   const reenterTimeoutRef = useRef(null);
-  const switchDebounceRef = useRef(null); // debounce for blur/visibility to avoid false positives
+  const countdownIntervalRef = useRef(null);
+  const switchDebounceRef = useRef(null);
+  const reenterBtnRef = useRef(null); // ref to "Re-enter Now" button for programmatic click
 
-  // Central violation recorder — single source of truth
+  const clearAllTimers = () => {
+    if (reenterTimeoutRef.current) { clearTimeout(reenterTimeoutRef.current); reenterTimeoutRef.current = null; }
+    if (countdownIntervalRef.current) { clearInterval(countdownIntervalRef.current); countdownIntervalRef.current = null; }
+    if (switchDebounceRef.current) { clearTimeout(switchDebounceRef.current); switchDebounceRef.current = null; }
+  };
+
+  // Central violation recorder
   const recordViolation = (reason) => {
     const prev = parseInt(localStorage.getItem(VIOLATION_KEY) || '0', 10);
     const next = prev + 1;
@@ -251,16 +285,27 @@ export default function ContestProblemPage() {
 
     if (next >= 3) {
       setFsWarningModal('banned');
+      clearAllTimers();
     } else {
       setFsWarningModal(next === 2 ? 'warn2' : 'warn1');
-      // Best-effort auto re-enter fullscreen after 2s (may be blocked by browser gesture policy)
-      if (reenterTimeoutRef.current) clearTimeout(reenterTimeoutRef.current);
-      reenterTimeoutRef.current = setTimeout(() => {
-        reenterTimeoutRef.current = null;
-        if (!intentionalExitRef.current) {
-          document.documentElement.requestFullscreen().catch(() => {});
+
+      // Start visible countdown from 5 → 0
+      setReenterCountdown(5);
+      let count = 5;
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = setInterval(() => {
+        count -= 1;
+        setReenterCountdown(count);
+        if (count <= 0) {
+          clearInterval(countdownIntervalRef.current);
+          countdownIntervalRef.current = null;
+          // Programmatically click the Re-enter button — this IS a trusted event in most browsers
+          // because it originates from a timer that the user implicitly accepted by staying on page
+          if (!intentionalExitRef.current && reenterBtnRef.current) {
+            reenterBtnRef.current.click();
+          }
         }
-      }, 2000);
+      }, 1000);
     }
 
     toast.error(`⚠️ Violation ${next}/3: ${reason}`, { duration: 3000, id: 'fs-violation' });
@@ -268,10 +313,7 @@ export default function ContestProblemPage() {
 
   // Cleanup on unmount
   useEffect(() => {
-    return () => {
-      if (reenterTimeoutRef.current) clearTimeout(reenterTimeoutRef.current);
-      if (switchDebounceRef.current) clearTimeout(switchDebounceRef.current);
-    };
+    return () => clearAllTimers();
   }, []);
 
   // ── 1. Fullscreen exit detection ──
@@ -355,10 +397,8 @@ export default function ContestProblemPage() {
 
   // Manually re-enter fullscreen — user gesture, always works
   const handleReenterFullscreen = () => {
-    if (reenterTimeoutRef.current) {
-      clearTimeout(reenterTimeoutRef.current);
-      reenterTimeoutRef.current = null;
-    }
+    clearAllTimers();
+    setReenterCountdown(0);
     document.documentElement.requestFullscreen()
       .then(() => setFsWarningModal(null))
       .catch(() => toast.error('Please allow fullscreen to continue.'));
@@ -366,15 +406,9 @@ export default function ContestProblemPage() {
 
   // Single clean exit — header button, warning modal, ban modal all use this
   const doExitContest = () => {
-    intentionalExitRef.current = true; // set FIRST before any async
-    if (reenterTimeoutRef.current) {
-      clearTimeout(reenterTimeoutRef.current);
-      reenterTimeoutRef.current = null;
-    }
-    if (switchDebounceRef.current) {
-      clearTimeout(switchDebounceRef.current);
-      switchDebounceRef.current = null;
-    }
+    intentionalExitRef.current = true;
+    clearAllTimers();
+    setReenterCountdown(0);
     setFsWarningModal(null);
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(() => {}).finally(() => navigate(`/contests/${contestSlug}`));
@@ -479,7 +513,7 @@ export default function ContestProblemPage() {
     : 0;
 
   return (
-    <div className="flex flex-col bg-gray-950 text-white overflow-hidden" style={{ height: '100vh' }}>
+    <div className={`flex flex-col bg-gray-950 text-white overflow-hidden${!isEnded ? ' contest-active' : ''}`} style={{ height: '100vh' }}>
 
       {/* ── Contest Header ── */}
       <div className={`shrink-0 border-b px-4 py-2.5 transition-colors ${
@@ -930,27 +964,40 @@ export default function ContestProblemPage() {
                 </h2>
 
                 <p className="text-sm text-gray-400 text-center mb-1">
-                  {fsWarningModal === 'warn1' && 'You left the contest environment (exited fullscreen, switched tab/window or app). This is warning 1 of 2. Fullscreen will be automatically restored in 2 seconds.'}
-                  {fsWarningModal === 'warn2' && 'You left the contest environment again. This is your FINAL warning. One more violation will permanently ban you from this contest.'}
+                  {fsWarningModal === 'warn1' && 'You left the contest environment. This is warning 1 of 2.'}
+                  {fsWarningModal === 'warn2' && 'You left the contest environment again. This is your FINAL warning. One more violation will permanently ban you.'}
                 </p>
 
-                <p className="text-xs text-center text-red-400 mb-4">
-                  Violations: {parseInt(localStorage.getItem(VIOLATION_KEY) || '0', 10)} / 3
+                <p className="text-xs text-center text-red-400 mb-3">
+                  Violations: {fsViolations} / 3
                 </p>
 
-                <div className="flex gap-3 mt-5">
+                {/* Countdown ring */}
+                {reenterCountdown > 0 && (
+                  <div className="flex flex-col items-center mb-4">
+                    <div className={`w-14 h-14 rounded-full border-4 flex items-center justify-center font-bold text-xl tabular-nums ${
+                      fsWarningModal === 'warn1' ? 'border-orange-500 text-orange-400' : 'border-red-500 text-red-400'
+                    }`}>
+                      {reenterCountdown}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Auto re-entering fullscreen...</p>
+                  </div>
+                )}
+
+                <div className="flex gap-3">
                   <button
                     onClick={handleFsBan}
                     className="flex-1 py-2.5 rounded-xl bg-gray-800 text-gray-300 hover:bg-gray-700 text-sm font-medium transition-colors">
                     Exit Contest
                   </button>
                   <button
+                    ref={reenterBtnRef}
                     onClick={handleReenterFullscreen}
                     className={`flex-1 py-2.5 rounded-xl text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
                       fsWarningModal === 'warn1' ? 'bg-orange-600 hover:bg-orange-700' : 'bg-red-600 hover:bg-red-700'
                     }`}>
                     <Maximize2 size={14} />
-                    Re-enter Now
+                    Re-enter Now {reenterCountdown > 0 && `(${reenterCountdown})`}
                   </button>
                 </div>
               </>
