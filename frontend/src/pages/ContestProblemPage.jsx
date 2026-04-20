@@ -125,7 +125,8 @@ function ProblemNav({ contest, currentSlug, mySubmissions = [] }) {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function ContestProblemPage() {
   const { contestSlug, problemSlug } = useParams();
-  const { user } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
+  const navigate = useNavigate();
   const qc = useQueryClient();
 
   const containerRef = useRef(null);
@@ -263,7 +264,6 @@ export default function ContestProblemPage() {
   const [fsWarningModal, setFsWarningModal] = useState(null);
   const [fsViolations, setFsViolations] = useState(() => parseInt(localStorage.getItem(`fs_violations_${contestSlug}`) || '0', 10));
   const [reenterCountdown, setReenterCountdown] = useState(0); // visible countdown
-  const navigate = useNavigate();
   const intentionalExitRef = useRef(false);
   const reenterTimeoutRef = useRef(null);
   const countdownIntervalRef = useRef(null);
@@ -431,6 +431,11 @@ export default function ContestProblemPage() {
   };
 
   const handleRun = async () => {
+    if (!isAuthenticated) {
+      toast.error('Please login to run code');
+      setTimeout(() => navigate('/login'), 1500);
+      return;
+    }
     if (!code.trim()) return toast.error('Write some code first');
     setIsRunning(true);
     setActiveResult('run');
@@ -447,6 +452,11 @@ export default function ContestProblemPage() {
   };
 
   const handleSubmit = async () => {
+    if (!isAuthenticated) {
+      toast.error('Please login to submit solutions');
+      setTimeout(() => navigate('/login'), 1500);
+      return;
+    }
     if (!code.trim()) return toast.error('Write some code first');
     if (isEnded) return toast.error('Contest has ended');
     if (!problem?._id) return;

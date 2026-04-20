@@ -278,6 +278,13 @@ export default function ContestDetailPage() {
 
   // ── Fullscreen enter handler ──
   const handleEnterProblem = (problemSlug) => {
+    // Check if user is authenticated
+    if (!isAuthenticated) {
+      toast.error('Please login to enter contest problems');
+      setTimeout(() => navigate('/login'), 1500);
+      return;
+    }
+
     const violations = getViolations();
     if (violations >= 3) {
       setFsModal('banned');
@@ -367,22 +374,25 @@ export default function ContestDetailPage() {
             <span className="flex items-center gap-1.5"><Users size={14} /> {contest.registeredCount} registered</span>
           </div>
 
-          {isAuthenticated ? (
-            isRegistered ? (
-              <div className="flex items-center gap-2 text-green-400 font-medium bg-green-400/10 border border-green-400/20 px-4 py-2.5 rounded-lg w-fit">
-                <CheckCircle2 size={16} /> You're registered
-              </div>
-            ) : (
-              <button onClick={() => doRegister()} disabled={registering}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-6 py-2.5 rounded-lg font-medium transition-colors">
-                {registering ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
-                Register Now
-              </button>
-            )
+          {isRegistered ? (
+            <div className="flex items-center gap-2 text-green-400 font-medium bg-green-400/10 border border-green-400/20 px-4 py-2.5 rounded-lg w-fit">
+              <CheckCircle2 size={16} /> You're registered
+            </div>
+          ) : isAuthenticated ? (
+            <button onClick={() => doRegister()} disabled={registering}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-6 py-2.5 rounded-lg font-medium transition-colors">
+              {registering ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
+              Register Now
+            </button>
           ) : (
-            <Link to="/login" className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-medium">
+            <button 
+              onClick={() => {
+                toast.error('Please login to register for contests');
+                setTimeout(() => navigate('/login'), 1500);
+              }}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-medium transition-colors">
               <Zap size={14} /> Login to Register
-            </Link>
+            </button>
           )}
         </div>
 
@@ -481,12 +491,23 @@ export default function ContestDetailPage() {
             ))}
           </div>
 
-          {!isRegistered && isAuthenticated && (
-            <button onClick={() => doRegister()} disabled={registering}
-              className="flex items-center gap-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
-              {registering ? <Loader2 size={13} className="animate-spin" /> : <Zap size={13} />}
-              Join Contest
-            </button>
+          {!isRegistered && (
+            isAuthenticated ? (
+              <button onClick={() => doRegister()} disabled={registering}
+                className="flex items-center gap-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                {registering ? <Loader2 size={13} className="animate-spin" /> : <Zap size={13} />}
+                Join Contest
+              </button>
+            ) : (
+              <button 
+                onClick={() => {
+                  toast.error('Please login to join contests');
+                  setTimeout(() => navigate('/login'), 1500);
+                }}
+                className="flex items-center gap-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                <Zap size={13} /> Login to Join
+              </button>
+            )
           )}
         </div>
 

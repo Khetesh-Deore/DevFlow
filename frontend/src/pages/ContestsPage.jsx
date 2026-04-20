@@ -47,7 +47,17 @@ function TypeBadge({ type }) {
 
 function LiveCard({ contest }) {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuthStore();
   const endCountdown = useCountdown(contest.endTime);
+
+  const handleEnterContest = () => {
+    if (!isAuthenticated) {
+      toast.error('Please login to enter contests');
+      setTimeout(() => navigate('/login'), 1500);
+      return;
+    }
+    navigate(`/contests/${contest.slug}`);
+  };
 
   return (
     <div className="bg-gray-900 border border-green-500/40 rounded-xl p-5 relative overflow-hidden">
@@ -71,7 +81,7 @@ function LiveCard({ contest }) {
         <span className="flex items-center gap-1"><Users size={12} /> {contest.registeredCount} registered</span>
         <span className="flex items-center gap-1"><Clock size={12} /> {formatDuration(contest.duration)}</span>
       </div>
-      <button onClick={() => navigate(`/contests/${contest.slug}`)}
+      <button onClick={handleEnterContest}
         className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg text-sm font-medium transition-colors">
         Enter Contest
       </button>
@@ -80,6 +90,7 @@ function LiveCard({ contest }) {
 }
 
 function UpcomingCard({ contest }) {
+  const navigate = useNavigate();
   const { isAuthenticated } = useAuthStore();
   const qc = useQueryClient();
   const startCountdown = useCountdown(contest.startTime);
@@ -89,6 +100,15 @@ function UpcomingCard({ contest }) {
     onSuccess: () => { toast.success('Registered!'); qc.invalidateQueries(['contests']); },
     onError: (e) => toast.error(e.response?.data?.error || e.message)
   });
+
+  const handleRegister = () => {
+    if (!isAuthenticated) {
+      toast.error('Please login to register for contests');
+      setTimeout(() => navigate('/login'), 1500);
+      return;
+    }
+    doRegister();
+  };
 
   return (
     <div className="bg-gray-900 border border-blue-500/20 rounded-xl p-5 relative overflow-hidden">
@@ -106,22 +126,16 @@ function UpcomingCard({ contest }) {
         <span className="flex items-center gap-1"><Clock size={12} /> {formatDuration(contest.duration)}</span>
         <span className="flex items-center gap-1"><Users size={12} /> {contest.registeredCount}</span>
       </div>
-      {isAuthenticated ? (
-        contest.isRegistered ? (
-          <div className="flex items-center gap-1.5 text-green-400 text-sm font-medium">
-            <CheckCircle2 size={14} /> Registered
-          </div>
-        ) : (
-          <button onClick={() => doRegister()} disabled={isLoading}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
-            {isLoading && <Loader2 size={13} className="animate-spin" />}
-            Register
-          </button>
-        )
+      {contest.isRegistered ? (
+        <div className="flex items-center gap-1.5 text-green-400 text-sm font-medium">
+          <CheckCircle2 size={14} /> Registered
+        </div>
       ) : (
-        <Link to="/login" className="block w-full text-center bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium">
-          Login to Register
-        </Link>
+        <button onClick={handleRegister} disabled={isLoading}
+          className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
+          {isLoading && <Loader2 size={13} className="animate-spin" />}
+          {isAuthenticated ? 'Register' : 'Login to Register'}
+        </button>
       )}
     </div>
   );

@@ -75,17 +75,20 @@ function AppContent() {
           <Route path="/forgot-password" element={<Placeholder name="ForgotPassword" />} />
           <Route path="/reset-password/:token" element={<Placeholder name="ResetPassword" />} />
 
-          {/* Protected */}
+          {/* Public view, login required for actions */}
+          <Route path="/problems" element={<ProblemsPage />} />
+          <Route path="/problems/:slug" element={<ProblemDetailPage />} />
+          <Route path="/contests" element={<ContestsPage />} />
+          <Route path="/contests/:slug" element={<ContestDetailPage />} />
+          <Route path="/leaderboard" element={<LeaderboardPage />} />
+          <Route path="/profile/:username" element={<ProfilePage />} />
+
+          {/* Protected - require login */}
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/problems" element={<ProblemsPage />} />
-            <Route path="/problems/:slug" element={<ProblemDetailPage />} />
-            <Route path="/contests" element={<ContestsPage />} />
-            <Route path="/contests/:slug" element={<ContestDetailPage />} />
             <Route path="/contests/:contestSlug/problems/:problemSlug" element={<ContestProblemPage />} />
-            <Route path="/leaderboard" element={<LeaderboardPage />} />
-            <Route path="/profile/:username" element={<ProfilePage />} />
-            <Route path="/history" element={<HistoryPage />} />          </Route>
+            <Route path="/history" element={<HistoryPage />} />
+          </Route>
 
           {/* Admin */}
           <Route element={<AdminRoute />}>

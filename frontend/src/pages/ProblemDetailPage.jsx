@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import useAuthStore from '../store/authStore';
 import { ChevronDown, ChevronRight, Clock, ArrowLeft, Play, Send, Terminal, FileText, Code2, Maximize2, Minimize2, RotateCcw } from 'lucide-react';
 import { getProblem } from '../api/problemApi';
 import { submitCode, runCode, getSubmission, getMySubmissions } from '../api/submissionApi';
@@ -71,6 +72,8 @@ function SubmissionHistory({ problemId }) {
 
 export default function ProblemDetailPage() {
   const { slug } = useParams();
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuthStore();
   const containerRef = useRef(null);
   const rightRef = useRef(null);
 
@@ -117,6 +120,11 @@ export default function ProblemDetailPage() {
   const handleHDrag = useCallback((pct) => setEditorPct(pct), []);
 
   const handleRun = async () => {
+    if (!isAuthenticated) {
+      toast.error('Please login to run code');
+      setTimeout(() => navigate('/login'), 1500);
+      return;
+    }
     if (!code.trim()) return toast.error('Write some code first');
     const input = customInput || problem?.sampleTestCases?.[0]?.input || '';
     setIsRunning(true); setRunResult(null); setActiveBottomTab('result');
@@ -138,6 +146,11 @@ export default function ProblemDetailPage() {
   };
 
   const handleSubmit = async () => {
+    if (!isAuthenticated) {
+      toast.error('Please login to submit solutions');
+      setTimeout(() => navigate('/login'), 1500);
+      return;
+    }
     if (!code.trim()) return toast.error('Write some code first');
     setIsSubmitting(true); setSubmissionResult(null); setActiveBottomTab('result');
     try {
