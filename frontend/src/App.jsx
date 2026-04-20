@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import { useEffect } from 'react';
@@ -47,8 +47,9 @@ const NotFound = () => (
   </div>
 );
 
-
-export default function App() {
+// Wrapper component to conditionally show navbar
+function AppContent() {
+  const location = useLocation();
   const { token, setUser, setLoading, logout } = useAuthStore();
 
   useEffect(() => {
@@ -59,11 +60,13 @@ export default function App() {
       .catch(() => { logout(); setLoading(false); });
   }, []);
 
+  // Hide navbar for contest problem pages
+  const hideNavbar = location.pathname.match(/^\/contests\/[^/]+\/problems\/[^/]+$/);
+
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Navbar />
-        <Routes>
+    <>
+      {!hideNavbar && <Navbar />}
+      <Routes>
 
           {/* Public */}
           <Route path="/" element={<HomePage />} />
@@ -101,6 +104,15 @@ export default function App() {
           <Route path="*" element={<NotFound />} />
 
         </Routes>
+      </>
+    );
+}
+
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <AppContent />
       </BrowserRouter>
       <Toaster
         position="top-right"

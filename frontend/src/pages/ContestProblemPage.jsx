@@ -329,19 +329,19 @@ export default function ContestProblemPage() {
     <div className="flex flex-col bg-gray-950 text-white overflow-hidden" style={{ height: '100vh' }}>
 
       {/* ── Contest Header ── */}
-      <div className={`shrink-0 border-b px-4 py-2 transition-colors ${
+      <div className={`shrink-0 border-b px-4 py-2.5 transition-colors ${
         isRedTimer ? 'bg-red-950/80 border-red-800' : 'bg-gray-900 border-gray-800'
       }`}>
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
             <Link to={`/contests/${contestSlug}`}
-              className="flex items-center gap-1 text-xs text-gray-400 hover:text-white shrink-0">
-              <ArrowLeft size={13} /> Back
+              className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-white shrink-0 transition-colors px-2 py-1 rounded hover:bg-gray-800">
+              <ArrowLeft size={14} /> Exit Contest
             </Link>
             <span className="text-gray-700">|</span>
-            <span className="text-sm font-medium text-white truncate">{contest?.title}</span>
+            <span className="text-sm font-semibold text-white truncate">{contest?.title}</span>
             {contestProblem && (
-              <span className="text-xs bg-yellow-400/10 text-yellow-400 px-2 py-0.5 rounded-full shrink-0">
+              <span className="text-xs bg-yellow-400/10 text-yellow-400 px-2.5 py-1 rounded-full shrink-0 font-medium">
                 {contestProblem.label || contestProblem.order} · {contestProblem.points}pts
               </span>
             )}
@@ -360,8 +360,8 @@ export default function ContestProblemPage() {
 
             {/* Timer */}
             {!isEnded ? (
-              <div className="flex items-center gap-1.5">
-                <Clock size={13} className={isRedTimer ? 'text-red-400' : 'text-gray-400'} />
+              <div className="flex items-center gap-2 bg-gray-800/50 px-3 py-1.5 rounded-lg">
+                <Clock size={14} className={isRedTimer ? 'text-red-400' : 'text-gray-400'} />
                 <span className={`font-mono text-base font-bold tabular-nums ${
                   isRedTimer ? 'text-red-400 animate-pulse' : isWarning ? 'text-orange-400' : 'text-white'
                 }`}>
@@ -369,7 +369,7 @@ export default function ContestProblemPage() {
                 </span>
               </div>
             ) : (
-              <span className="text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded">Ended</span>
+              <span className="text-xs text-gray-500 bg-gray-800 px-3 py-1.5 rounded-lg">Contest Ended</span>
             )}
           </div>
         </div>
