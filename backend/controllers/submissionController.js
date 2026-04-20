@@ -73,30 +73,43 @@ const processSubmission = async (submission, problem, userId) => {
       if (!alreadySolved) {
         const diffMap = { Easy: 'easySolved', Medium: 'mediumSolved', Hard: 'hardSolved' };
 
-        // Update streak
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        // Update streak (using IST timezone for consistency)
+        const now = new Date();
+        const istOffset = 5.5 * 60 * 60 * 1000; // IST is UTC+5:30
+        const istNow = new Date(now.getTime() + istOffset);
+        const today = new Date(istNow.getFullYear(), istNow.getMonth(), istNow.getDate());
+        
         const lastSolved = user.stats.lastSolvedDate ? new Date(user.stats.lastSolvedDate) : null;
-        let streakInc = 0;
-        if (!lastSolved) {
-          streakInc = 1;
-        } else {
-          const lastDay = new Date(lastSolved);
-          lastDay.setHours(0, 0, 0, 0);
-          const diff = Math.floor((today - lastDay) / 86400000);
-          if (diff === 1) streakInc = 1;       // consecutive day
-          else if (diff === 0) streakInc = 0;  // same day
-          else streakInc = -(user.stats.streak || 0) + 1; // reset to 1
+        let newStreak = 1; // Default to 1 for new solve
+        
+        if (lastSolved) {
+          const istLastSolved = new Date(lastSolved.getTime() + istOffset);
+          const lastDay = new Date(istLastSolved.getFullYear(), istLastSolved.getMonth(), istLastSolved.getDate());
+          const daysDiff = Math.floor((today - lastDay) / 86400000);
+          
+          if (daysDiff === 0) {
+            // Same day - keep current streak
+            newStreak = user.stats.streak || 1;
+          } else if (daysDiff === 1) {
+            // Consecutive day - increment streak
+            newStreak = (user.stats.streak || 0) + 1;
+          } else {
+            // Gap > 1 day - reset to 1
+            newStreak = 1;
+          }
         }
 
         await User.findByIdAndUpdate(userId, {
           $addToSet: { solvedProblems: problem._id },
           $inc: {
             'stats.totalSolved': 1,
-            [`stats.${diffMap[problem.difficulty]}`]: 1,
-            'stats.streak': streakInc
+            [`stats.${diffMap[problem.difficulty]}`]: 1
           },
-          $set: { 'stats.lastSolvedDate': new Date() }
+          $set: { 
+            'stats.streak': newStreak,
+            'stats.lastSolvedDate': now
+          },
+          $max: { 'stats.maxStreak': newStreak }  // Update maxStreak if newStreak is higher
         });
       }
     }

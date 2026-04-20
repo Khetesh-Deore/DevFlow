@@ -28,6 +28,7 @@ const userSchema = new mongoose.Schema(
       acceptedSubmissions:{ type: Number, default: 0 },
       points:             { type: Number, default: 0 },
       streak:             { type: Number, default: 0 },
+      maxStreak:          { type: Number, default: 0 },
       lastSolvedDate:     { type: Date }
     },
     solvedProblems:        [{ type: mongoose.Schema.Types.ObjectId, ref: 'Problem' }],

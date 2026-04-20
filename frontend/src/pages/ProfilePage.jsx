@@ -290,7 +290,8 @@ export default function ProfilePage() {
               { label: 'Total Submissions', value: totalSubmissions, color: 'text-gray-300' },
               { label: 'Acceptance Rate', value: `${acceptanceRate}%`, color: 'text-blue-400' },
               { label: 'Contest Points', value: stats.points || 0, color: 'text-yellow-400' },
-              { label: 'Current Streak', value: `${stats.streak || 0} days`, color: 'text-orange-400' }
+              { label: 'Current Streak', value: `${stats.streak || 0} days`, color: 'text-orange-400' },
+              { label: 'Max Streak', value: `${stats.maxStreak || 0} days`, color: 'text-red-400' }
             ].map(s => (
               <div key={s.label}>
                 <div className={`text-xl font-bold ${s.color}`}>{s.value}</div>

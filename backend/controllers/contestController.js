@@ -224,8 +224,14 @@ const processContestSubmission = async (submission, contest, problem, contestPro
       contestId: contest._id, userId, problemId: problem._id
     });
 
+    // Check if user already solved this problem in this contest
+    const alreadySolved = await ContestSubmission.findOne({
+      contestId: contest._id, userId, problemId: problem._id, status: 'accepted'
+    });
+
     const isAccepted = judgeResult.overall_status === 'accepted';
-    const points = isAccepted ? (contestProblem.points || 0) : 0;
+    const isFirstAccepted = isAccepted && !alreadySolved;
+    const points = isFirstAccepted ? (contestProblem.points || 0) : 0;
     const penalty = !isAccepted ? (prevAttempts * (contest.penaltyMinutes || 20)) : 0;
 
     await ContestSubmission.create({
@@ -238,7 +244,7 @@ const processContestSubmission = async (submission, contest, problem, contestPro
       timeTakenSec,
       attemptNumber: prevAttempts + 1,
       penaltyMinutes: penalty,
-      isFirstAccepted: isAccepted && prevAttempts === 0,
+      isFirstAccepted,
       submittedAt: submission.submittedAt
     });
 
@@ -247,15 +253,24 @@ const processContestSubmission = async (submission, contest, problem, contestPro
     if (isAccepted) {
       await Problem.findByIdAndUpdate(problem._id, { $inc: { totalAccepted: 1 } });
       await Problem.updateAcceptanceRate(problem._id);
-      // Update user solved stats
-      await User.findByIdAndUpdate(userId, {
-        $addToSet: { solvedProblems: problem._id },
-        $inc: {
-          'stats.totalSolved': 1,
-          [`stats.${problem.difficulty.toLowerCase()}Solved`]: 1,
-          'stats.acceptedSubmissions': 1
-        }
-      });
+      
+      // Only update user stats if this is the first accepted submission for this problem in this contest
+      if (isFirstAccepted) {
+        await User.findByIdAndUpdate(userId, {
+          $addToSet: { solvedProblems: problem._id },
+          $inc: {
+            'stats.totalSolved': 1,
+            [`stats.${problem.difficulty.toLowerCase()}Solved`]: 1,
+            'stats.acceptedSubmissions': 1,
+            'stats.points': points  // Add contest points to user's total points
+          }
+        });
+      } else {
+        // Still count as accepted submission even if already solved
+        await User.findByIdAndUpdate(userId, {
+          $inc: { 'stats.acceptedSubmissions': 1 }
+        });
+      }
     }
     await User.findByIdAndUpdate(userId, { $inc: { 'stats.totalSubmissions': 1 } });
 

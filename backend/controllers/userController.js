@@ -31,10 +31,32 @@ const getSubmissionCalendar = async (userId) => {
   return calendar;
 };
 
+// Check and update streak if it should be reset
+const checkAndUpdateStreak = async (user) => {
+  if (!user.stats.lastSolvedDate) return user;
+  
+  const now = new Date();
+  const istOffset = 5.5 * 60 * 60 * 1000; // IST is UTC+5:30
+  const istNow = new Date(now.getTime() + istOffset);
+  const today = new Date(istNow.getFullYear(), istNow.getMonth(), istNow.getDate());
+  
+  const istLastSolved = new Date(user.stats.lastSolvedDate.getTime() + istOffset);
+  const lastDay = new Date(istLastSolved.getFullYear(), istLastSolved.getMonth(), istLastSolved.getDate());
+  const daysDiff = Math.floor((today - lastDay) / 86400000);
+  
+  // If more than 1 day has passed, reset streak to 0
+  if (daysDiff > 1 && user.stats.streak > 0) {
+    user.stats.streak = 0;
+    await user.save();
+  }
+  
+  return user;
+};
+
 // ─── public ──────────────────────────────────────────────────────────────────
 
 exports.getUserProfile = asyncHandler(async (req, res) => {
-  const user = await User.findOne({
+  let user = await User.findOne({
     $or: [
       { rollNumber: req.params.username },
       { email: req.params.username },
@@ -43,6 +65,9 @@ exports.getUserProfile = asyncHandler(async (req, res) => {
   }).select('name rollNumber batch branch profilePic stats createdAt solvedProblems');
 
   if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+
+  // Check and update streak if needed
+  user = await checkAndUpdateStreak(user);
 
   // Difficulty breakdown
   const solvedProblems = await Problem.find({ _id: { $in: user.solvedProblems } }).select('difficulty');
