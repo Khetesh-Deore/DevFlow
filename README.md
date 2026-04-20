@@ -18,8 +18,14 @@ A modern competitive programming platform built for college students to practice
 - **User Profiles**: View detailed statistics, heatmaps, and achievement badges
 
 ### Contest Features
+- **Proctoring System**: Advanced anti-cheating with 3-strike policy
+- **Fullscreen Enforcement**: Mandatory fullscreen mode during contests
+- **Tab/Window Monitoring**: Detects and penalizes tab/app switching
 - **Copy-Paste Protection**: Disabled during live contests for fair competition
+- **Screenshot Prevention**: Blocks PrintScreen, Snipping Tool, and OS shortcuts
 - **Real-Time Timer**: Live countdown with visual alerts
+- **Violation Tracking**: Live counter showing warnings (0/3, 1/3, 2/3)
+- **Auto Re-entry**: Automatic fullscreen restoration with countdown
 - **Hidden Test Cases**: Prevent hardcoded solutions
 - **Live Leaderboards**: Real-time rankings with automatic updates
 - **Problem Switching**: Quick navigation between contest problems
@@ -34,10 +40,22 @@ A modern competitive programming platform built for college students to practice
 - **Template Reset**: Quick reset to language templates
 
 ### Security & Fair Play
+- **Advanced Proctoring**: Multi-layer contest monitoring system
+  - Fullscreen enforcement with automatic restoration
+  - Tab/window/app switch detection (300ms debounce)
+  - Desktop switch monitoring via window blur events
+  - 3-strike policy with progressive warnings
+  - Permanent ban after 3 violations
+- **Copy-Paste Blocking**: Ctrl+C/V/X disabled during contests
+- **Screenshot Prevention**: 
+  - PrintScreen key blocked
+  - Windows Snipping Tool (Win+Shift+S) blocked
+  - macOS screenshots (Cmd+Shift+3/4/5) blocked
+  - Clipboard cleared on PrintScreen attempt
+- **Right-Click Protection**: Context menu disabled
 - **Rate Limiting**: Prevent spam and abuse
 - **JWT Authentication**: Secure user sessions
 - **Role-Based Access**: Admin, user, and guest roles
-- **Copy-Paste Blocking**: Active during contests
 - **Hidden Test Cases**: Ensure solution quality
 
 ## 🏗️ Architecture
@@ -202,6 +220,42 @@ node scripts/createAdmin.js
 
 ## 🔐 Security Features
 
+### Contest Proctoring System
+- **Fullscreen Enforcement**: 
+  - Mandatory fullscreen mode during live contests
+  - Automatic restoration within 5 seconds
+  - ESC/F11 key detection
+  - Visual countdown for re-entry
+  
+- **Multi-Layer Monitoring**:
+  - Tab switch detection (`visibilitychange` API)
+  - Window switch detection (`blur` event)
+  - Desktop switch detection (Alt+Tab)
+  - Virtual desktop switch tracking
+  - 300-500ms debounce to avoid false positives
+
+- **3-Strike Policy**:
+  - 1st violation: Warning, continue allowed
+  - 2nd violation: Final warning
+  - 3rd violation: Permanent ban from contest
+  - Live counter in header (0/3, 1/3, 2/3)
+  - Violations persist in localStorage
+
+- **Copy-Paste Prevention**:
+  - Ctrl+C/V/X blocked
+  - Context menu disabled
+  - Browser copy/paste events prevented
+  - Active only during live contests
+
+- **Screenshot Prevention**:
+  - PrintScreen key blocked
+  - Windows Snipping Tool (Win+Shift+S) blocked
+  - macOS shortcuts (Cmd+Shift+3/4/5) blocked
+  - Clipboard cleared on attempt
+  - CSS user-select disabled
+  - Print-to-PDF blocked
+
+### General Security
 - **JWT Authentication**: Secure token-based auth
 - **Password Hashing**: bcrypt with salt rounds
 - **Rate Limiting**: 
@@ -210,7 +264,6 @@ node scripts/createAdmin.js
   - Submissions: 10 requests/15min
 - **Input Validation**: Sanitized user inputs
 - **CORS Protection**: Configured allowed origins
-- **Copy-Paste Blocking**: Active during contests
 
 ## 🚀 Deployment
 

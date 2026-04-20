@@ -149,52 +149,68 @@ export default function HomePage() {
       <section className="py-20 bg-gray-900/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4">Contest Features</h2>
-            <p className="text-gray-400 text-lg">Fair and secure competitive environment</p>
+            <h2 className="text-4xl font-bold mb-4">Advanced Contest Security</h2>
+            <p className="text-gray-400 text-lg">Enterprise-grade proctoring for fair competition</p>
           </div>
           
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
             
-            <div className="flex gap-4">
-              <div className="w-10 h-10 bg-blue-600/10 rounded-lg flex items-center justify-center shrink-0">
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-blue-600/50 transition-colors">
+              <div className="w-10 h-10 bg-blue-600/10 rounded-lg flex items-center justify-center mb-3">
                 <Lock className="text-blue-400" size={20} />
               </div>
-              <div>
-                <h3 className="text-lg font-semibold mb-1">Copy-Paste Protection</h3>
-                <p className="text-gray-400 text-sm">Copy-paste is disabled during live contests to ensure fair competition.</p>
-              </div>
+              <h3 className="text-lg font-semibold mb-2">Fullscreen Enforcement</h3>
+              <p className="text-gray-400 text-sm">Mandatory fullscreen mode with automatic restoration. ESC/F11 detection with 5-second countdown.</p>
             </div>
 
-            <div className="flex gap-4">
-              <div className="w-10 h-10 bg-purple-600/10 rounded-lg flex items-center justify-center shrink-0">
-                <Timer className="text-purple-400" size={20} />
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-purple-600/50 transition-colors">
+              <div className="w-10 h-10 bg-purple-600/10 rounded-lg flex items-center justify-center mb-3">
+                <Shield className="text-purple-400" size={20} />
               </div>
-              <div>
-                <h3 className="text-lg font-semibold mb-1">Real-Time Timer</h3>
-                <p className="text-gray-400 text-sm">Live countdown timer with visual alerts as the contest deadline approaches.</p>
-              </div>
+              <h3 className="text-lg font-semibold mb-2">Tab/Window Monitoring</h3>
+              <p className="text-gray-400 text-sm">Detects tab switches, Alt+Tab, and virtual desktop changes. 300ms debounce to avoid false positives.</p>
             </div>
 
-            <div className="flex gap-4">
-              <div className="w-10 h-10 bg-pink-600/10 rounded-lg flex items-center justify-center shrink-0">
-                <CheckCircle className="text-pink-400" size={20} />
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-pink-600/50 transition-colors">
+              <div className="w-10 h-10 bg-pink-600/10 rounded-lg flex items-center justify-center mb-3">
+                <Timer className="text-pink-400" size={20} />
               </div>
-              <div>
-                <h3 className="text-lg font-semibold mb-1">Instant Verdicts</h3>
-                <p className="text-gray-400 text-sm">Get immediate feedback on submissions with detailed test case results.</p>
-              </div>
+              <h3 className="text-lg font-semibold mb-2">3-Strike Policy</h3>
+              <p className="text-gray-400 text-sm">Progressive warnings (1st, 2nd) then permanent ban on 3rd violation. Live counter in header.</p>
             </div>
 
-            <div className="flex gap-4">
-              <div className="w-10 h-10 bg-green-600/10 rounded-lg flex items-center justify-center shrink-0">
-                <Shield className="text-green-400" size={20} />
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-green-600/50 transition-colors">
+              <div className="w-10 h-10 bg-green-600/10 rounded-lg flex items-center justify-center mb-3">
+                <Lock className="text-green-400" size={20} />
               </div>
-              <div>
-                <h3 className="text-lg font-semibold mb-1">Hidden Test Cases</h3>
-                <p className="text-gray-400 text-sm">Problems include hidden test cases to prevent hardcoding solutions.</p>
-              </div>
+              <h3 className="text-lg font-semibold mb-2">Copy-Paste Protection</h3>
+              <p className="text-gray-400 text-sm">Ctrl+C/V/X blocked. Context menu disabled. Browser copy/paste events prevented during contests.</p>
             </div>
 
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-orange-600/50 transition-colors">
+              <div className="w-10 h-10 bg-orange-600/10 rounded-lg flex items-center justify-center mb-3">
+                <Shield className="text-orange-400" size={20} />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">Screenshot Prevention</h3>
+              <p className="text-gray-400 text-sm">PrintScreen, Win+Shift+S, Cmd+Shift+3/4/5 blocked. Clipboard cleared on attempt.</p>
+            </div>
+
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-red-600/50 transition-colors">
+              <div className="w-10 h-10 bg-red-600/10 rounded-lg flex items-center justify-center mb-3">
+                <CheckCircle className="text-red-400" size={20} />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">Hidden Test Cases</h3>
+              <p className="text-gray-400 text-sm">Sample cases show full details. Hidden cases show only pass/fail to prevent hardcoding.</p>
+            </div>
+
+          </div>
+
+          {/* Security Badge */}
+          <div className="mt-12 text-center">
+            <div className="inline-flex items-center gap-2 bg-blue-600/10 border border-blue-600/30 rounded-full px-6 py-3">
+              <Shield className="text-blue-400" size={18} />
+              <span className="text-sm font-semibold text-blue-400">Enterprise-Grade Security</span>
+            </div>
           </div>
         </div>
       </section>
