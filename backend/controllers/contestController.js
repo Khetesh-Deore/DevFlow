@@ -139,9 +139,16 @@ exports.deleteContest = asyncHandler(async (req, res) => {
 exports.togglePublish = asyncHandler(async (req, res) => {
   const contest = await Contest.findById(req.params.id);
   if (!contest) return res.status(404).json({ success: false, error: 'Contest not found' });
-  contest.isPublished = !contest.isPublished;
-  await contest.save();
-  res.status(200).json({ success: true, data: contest });
+
+  // Use findByIdAndUpdate to bypass pre-save hook and ensure atomic update
+  const updated = await Contest.findByIdAndUpdate(
+    req.params.id,
+    { $set: { isPublished: !contest.isPublished } },
+    { new: true }
+  );
+
+  console.log(`📢 Contest "${updated.title}" → isPublished: ${updated.isPublished}`);
+  res.status(200).json({ success: true, data: updated });
 });
 
 // ─── registration ────────────────────────────────────────────────────────────
