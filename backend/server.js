@@ -29,6 +29,7 @@ app.use(cors({
     const allowed = [
       process.env.CLIENT_URL,
       'http://localhost:5173',
+      'http://192.168.76.210:5173',
       'http://localhost:8080',
       'https://devflow26.vercel.app',
       'https://devflow-frontend-new-1063807782201.europe-west1.run.app',

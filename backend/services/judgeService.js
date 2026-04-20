@@ -3,7 +3,7 @@ const axios = require('axios');
 const judgeClient = axios.create({
   baseURL: process.env.JUDGE_SERVICE_URL,
   timeout: 60000,
-  headers: { 'X-API-Key': process.env.JUDGE_API_KEY }
+  headers: { 'X-API-Key': process.env.JUDGE_API_KEY ||'http://192.168.76.210:8000' }
 });
 
 exports.executeCode = async (payload) => {
