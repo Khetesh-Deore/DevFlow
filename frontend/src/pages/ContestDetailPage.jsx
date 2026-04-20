@@ -293,14 +293,15 @@ export default function ContestDetailPage() {
       setFsModal(null);
       navigate(`/contests/${slug}/problems/${problemSlug}`);
     } catch {
-      toast.error('Fullscreen is required to enter the contest.');
+      // Fullscreen denied — close modal and show error
+      setFsModal(null);
+      setPendingProblemSlug(null);
+      toast.error('Fullscreen permission denied. Please allow fullscreen and try again.');
     }
   };
 
   const handleFsModalAction = async () => {
-    if (fsModal === 'request') {
-      await enterFullscreenAndNavigate(pendingProblemSlug);
-    } else if (fsModal === 'warn1' || fsModal === 'warn2') {
+    if (pendingProblemSlug) {
       await enterFullscreenAndNavigate(pendingProblemSlug);
     }
   };
@@ -607,49 +608,7 @@ export default function ContestDetailPage() {
                   </button>
                 </div>
               </>
-            ) : (
-              <>
-                <div className={`flex items-center justify-center w-14 h-14 rounded-full mx-auto mb-4 ${
-                  fsModal === 'warn1'
-                    ? 'bg-orange-500/10 border border-orange-500/30'
-                    : 'bg-red-500/10 border border-red-500/30'
-                }`}>
-                  <AlertCircle size={26} className={fsModal === 'warn1' ? 'text-orange-400' : 'text-red-400'} />
-                </div>
-
-                <h2 className="text-xl font-bold text-center text-white mb-2">
-                  {fsModal === 'warn1' && '⚠️ Warning 1 of 2'}
-                  {fsModal === 'warn2' && '⚠️ Warning 2 of 2 — Final Warning'}
-                </h2>
-
-                <p className="text-sm text-gray-400 text-center mb-1">
-                  {fsModal === 'warn1' && 'You exited fullscreen. This is your first warning. One more exit will result in a final warning.'}
-                  {fsModal === 'warn2' && 'You exited fullscreen again. This is your FINAL warning. The next exit will permanently ban you from this contest.'}
-                </p>
-
-                {fsModal !== 'request' && (
-                  <p className="text-xs text-center text-red-400 mb-4">
-                    Violations: {getViolations()} / 3
-                  </p>
-                )}
-
-                <div className="flex gap-3 mt-5">
-                  <button
-                    onClick={() => { setFsModal(null); setPendingProblemSlug(null); }}
-                    className="flex-1 py-2.5 rounded-xl bg-gray-800 text-gray-300 hover:bg-gray-700 text-sm font-medium transition-colors">
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleFsModalAction}
-                    className={`flex-1 py-2.5 rounded-xl text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
-                      fsModal === 'request' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-orange-600 hover:bg-orange-700'
-                    }`}>
-                    <Maximize2 size={14} />
-                    {fsModal === 'request' ? 'Enter Fullscreen' : 'Re-enter Fullscreen'}
-                  </button>
-                </div>
-              </>
-            )}
+            ) : null}
           </div>
         </div>
       )}

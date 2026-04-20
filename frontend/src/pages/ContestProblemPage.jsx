@@ -236,71 +236,155 @@ export default function ContestProblemPage() {
   // ── Fullscreen violation monitoring ──
   const VIOLATION_KEY = `fs_violations_${contestSlug}`;
   const [fsWarningModal, setFsWarningModal] = useState(null); // null | 'warn1' | 'warn2' | 'banned'
+  const [fsViolations, setFsViolations] = useState(() => parseInt(localStorage.getItem(`fs_violations_${contestSlug}`) || '0', 10));
   const navigate = useNavigate();
-  const intentionalExitRef = useRef(false); // Track intentional exits (Exit Contest button)
+  const intentionalExitRef = useRef(false);
+  const reenterTimeoutRef = useRef(null);
+  const switchDebounceRef = useRef(null); // debounce for blur/visibility to avoid false positives
 
+  // Central violation recorder — single source of truth
+  const recordViolation = (reason) => {
+    const prev = parseInt(localStorage.getItem(VIOLATION_KEY) || '0', 10);
+    const next = prev + 1;
+    localStorage.setItem(VIOLATION_KEY, String(next));
+    setFsViolations(next);
+
+    if (next >= 3) {
+      setFsWarningModal('banned');
+    } else {
+      setFsWarningModal(next === 2 ? 'warn2' : 'warn1');
+      // Best-effort auto re-enter fullscreen after 2s (may be blocked by browser gesture policy)
+      if (reenterTimeoutRef.current) clearTimeout(reenterTimeoutRef.current);
+      reenterTimeoutRef.current = setTimeout(() => {
+        reenterTimeoutRef.current = null;
+        if (!intentionalExitRef.current) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        }
+      }, 2000);
+    }
+
+    toast.error(`⚠️ Violation ${next}/3: ${reason}`, { duration: 3000, id: 'fs-violation' });
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (reenterTimeoutRef.current) clearTimeout(reenterTimeoutRef.current);
+      if (switchDebounceRef.current) clearTimeout(switchDebounceRef.current);
+    };
+  }, []);
+
+  // ── 1. Fullscreen exit detection ──
   useEffect(() => {
     if (isEnded) return;
 
     const handleFsChange = () => {
-      // If user exited fullscreen
-      if (!document.fullscreenElement) {
-        // Check if this was an intentional exit (Exit Contest button)
-        if (intentionalExitRef.current) {
-          intentionalExitRef.current = false;
-          return; // Don't count as violation
-        }
-
-        const prev = parseInt(localStorage.getItem(VIOLATION_KEY) || '0', 10);
-        const next = prev + 1;
-        localStorage.setItem(VIOLATION_KEY, next);
-
-        if (next >= 3) {
-          setFsWarningModal('banned');
-        } else if (next === 2) {
-          setFsWarningModal('warn2');
-          // Auto re-enter fullscreen after a short delay
-          setTimeout(async () => {
-            try {
-              await document.documentElement.requestFullscreen();
-            } catch {}
-          }, 100);
-        } else {
-          setFsWarningModal('warn1');
-          // Auto re-enter fullscreen after a short delay
-          setTimeout(async () => {
-            try {
-              await document.documentElement.requestFullscreen();
-            } catch {}
-          }, 100);
-        }
+      if (document.fullscreenElement) return; // entering fullscreen — ignore
+      if (intentionalExitRef.current) {
+        intentionalExitRef.current = false;
+        return;
       }
+      recordViolation('Exited fullscreen');
     };
 
     document.addEventListener('fullscreenchange', handleFsChange);
     return () => document.removeEventListener('fullscreenchange', handleFsChange);
   }, [isEnded, contestSlug]);
 
-  const handleReenterFullscreen = async () => {
-    try {
-      await document.documentElement.requestFullscreen();
-      setFsWarningModal(null);
-    } catch {
-      toast.error('Please allow fullscreen to continue.');
+  // ── 2. Tab/Window switch detection (visibilitychange) ──
+  useEffect(() => {
+    if (isEnded) return;
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        if (intentionalExitRef.current) return;
+        // Debounce 300ms to avoid false positives from browser internals
+        switchDebounceRef.current = setTimeout(() => {
+          recordViolation('Switched tab or window');
+        }, 300);
+      } else {
+        // Tab came back — cancel pending debounce (user returned quickly)
+        if (switchDebounceRef.current) {
+          clearTimeout(switchDebounceRef.current);
+          switchDebounceRef.current = null;
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      if (switchDebounceRef.current) {
+        clearTimeout(switchDebounceRef.current);
+        switchDebounceRef.current = null;
+      }
+    };
+  }, [isEnded, contestSlug]);
+
+  // ── 3. Desktop/app switch detection (window blur) ──
+  // Fires when user Alt+Tabs to another app or switches virtual desktop
+  useEffect(() => {
+    if (isEnded) return;
+
+    const handleBlur = () => {
+      if (intentionalExitRef.current) return;
+      // Only count as violation if we're in fullscreen (otherwise visibilitychange handles it)
+      // Use a short debounce to avoid false positives from browser dialogs
+      switchDebounceRef.current = setTimeout(() => {
+        if (!document.hasFocus() && !intentionalExitRef.current) {
+          recordViolation('Switched to another application');
+        }
+      }, 500);
+    };
+
+    const handleFocus = () => {
+      // Window regained focus — cancel pending blur violation
+      if (switchDebounceRef.current) {
+        clearTimeout(switchDebounceRef.current);
+        switchDebounceRef.current = null;
+      }
+    };
+
+    window.addEventListener('blur', handleBlur);
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      window.removeEventListener('blur', handleBlur);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [isEnded, contestSlug]);
+
+  // Manually re-enter fullscreen — user gesture, always works
+  const handleReenterFullscreen = () => {
+    if (reenterTimeoutRef.current) {
+      clearTimeout(reenterTimeoutRef.current);
+      reenterTimeoutRef.current = null;
+    }
+    document.documentElement.requestFullscreen()
+      .then(() => setFsWarningModal(null))
+      .catch(() => toast.error('Please allow fullscreen to continue.'));
+  };
+
+  // Single clean exit — header button, warning modal, ban modal all use this
+  const doExitContest = () => {
+    intentionalExitRef.current = true; // set FIRST before any async
+    if (reenterTimeoutRef.current) {
+      clearTimeout(reenterTimeoutRef.current);
+      reenterTimeoutRef.current = null;
+    }
+    if (switchDebounceRef.current) {
+      clearTimeout(switchDebounceRef.current);
+      switchDebounceRef.current = null;
+    }
+    setFsWarningModal(null);
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {}).finally(() => navigate(`/contests/${contestSlug}`));
+    } else {
+      navigate(`/contests/${contestSlug}`);
     }
   };
 
-  const handleFsBan = () => {
-    intentionalExitRef.current = true; // Mark as intentional exit
-    if (document.fullscreenElement) document.exitFullscreen();
-    navigate(`/contests/${contestSlug}`);
-  };
-
-  const handleExitContest = () => {
-    intentionalExitRef.current = true; // Mark as intentional exit
-    if (document.fullscreenElement) document.exitFullscreen();
-    navigate(`/contests/${contestSlug}`);
-  };
+  const handleExitContest = doExitContest;
+  const handleFsBan = doExitContest;
 
   const contestProblem = contest?.problems?.find(
     p => p.problemId?.slug === problemSlug || p.problemId?._id?.toString() === problem?._id?.toString()
@@ -417,6 +501,19 @@ export default function ContestProblemPage() {
           </div>
 
           <div className="flex items-center gap-4 shrink-0">
+            {/* Fullscreen violation counter */}
+            {!isEnded && (
+              <div className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border ${
+                fsViolations === 0
+                  ? 'bg-green-400/10 border-green-400/20 text-green-400'
+                  : fsViolations === 1
+                  ? 'bg-orange-400/10 border-orange-400/20 text-orange-400'
+                  : 'bg-red-400/10 border-red-400/20 text-red-400 animate-pulse'
+              }`}>
+                <AlertCircle size={11} />
+                {fsViolations}/3 warnings
+              </div>
+            )}
             {/* Progress bar */}
             {!isEnded && (
               <div className="hidden sm:flex items-center gap-2">
@@ -833,8 +930,8 @@ export default function ContestProblemPage() {
                 </h2>
 
                 <p className="text-sm text-gray-400 text-center mb-1">
-                  {fsWarningModal === 'warn1' && 'You exited fullscreen. This is your first warning. Fullscreen has been automatically restored.'}
-                  {fsWarningModal === 'warn2' && 'You exited fullscreen again. This is your FINAL warning. One more exit will permanently ban you from this contest. Fullscreen has been automatically restored.'}
+                  {fsWarningModal === 'warn1' && 'You left the contest environment (exited fullscreen, switched tab/window or app). This is warning 1 of 2. Fullscreen will be automatically restored in 2 seconds.'}
+                  {fsWarningModal === 'warn2' && 'You left the contest environment again. This is your FINAL warning. One more violation will permanently ban you from this contest.'}
                 </p>
 
                 <p className="text-xs text-center text-red-400 mb-4">
@@ -848,12 +945,12 @@ export default function ContestProblemPage() {
                     Exit Contest
                   </button>
                   <button
-                    onClick={() => setFsWarningModal(null)}
+                    onClick={handleReenterFullscreen}
                     className={`flex-1 py-2.5 rounded-xl text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
                       fsWarningModal === 'warn1' ? 'bg-orange-600 hover:bg-orange-700' : 'bg-red-600 hover:bg-red-700'
                     }`}>
-                    <CheckCircle2 size={14} />
-                    Continue Contest
+                    <Maximize2 size={14} />
+                    Re-enter Now
                   </button>
                 </div>
               </>
