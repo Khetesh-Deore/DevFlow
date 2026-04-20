@@ -5,7 +5,7 @@ import {
   ArrowLeft, Clock,
   Play, Send, Trophy, CheckCircle2,
   XCircle, AlertTriangle, RotateCcw, Maximize2, Minimize2,
-  FileText, List, Lock
+  FileText, List, Lock, AlertCircle
 } from 'lucide-react';
 import { getProblem } from '../api/problemApi';
 import { getContest, submitInContest, getContestLeaderboard } from '../api/contestApi';
@@ -233,6 +233,75 @@ export default function ContestProblemPage() {
     };
   }, [isEnded]);
 
+  // ── Fullscreen violation monitoring ──
+  const VIOLATION_KEY = `fs_violations_${contestSlug}`;
+  const [fsWarningModal, setFsWarningModal] = useState(null); // null | 'warn1' | 'warn2' | 'banned'
+  const navigate = useNavigate();
+  const intentionalExitRef = useRef(false); // Track intentional exits (Exit Contest button)
+
+  useEffect(() => {
+    if (isEnded) return;
+
+    const handleFsChange = () => {
+      // If user exited fullscreen
+      if (!document.fullscreenElement) {
+        // Check if this was an intentional exit (Exit Contest button)
+        if (intentionalExitRef.current) {
+          intentionalExitRef.current = false;
+          return; // Don't count as violation
+        }
+
+        const prev = parseInt(localStorage.getItem(VIOLATION_KEY) || '0', 10);
+        const next = prev + 1;
+        localStorage.setItem(VIOLATION_KEY, next);
+
+        if (next >= 3) {
+          setFsWarningModal('banned');
+        } else if (next === 2) {
+          setFsWarningModal('warn2');
+          // Auto re-enter fullscreen after a short delay
+          setTimeout(async () => {
+            try {
+              await document.documentElement.requestFullscreen();
+            } catch {}
+          }, 100);
+        } else {
+          setFsWarningModal('warn1');
+          // Auto re-enter fullscreen after a short delay
+          setTimeout(async () => {
+            try {
+              await document.documentElement.requestFullscreen();
+            } catch {}
+          }, 100);
+        }
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => document.removeEventListener('fullscreenchange', handleFsChange);
+  }, [isEnded, contestSlug]);
+
+  const handleReenterFullscreen = async () => {
+    try {
+      await document.documentElement.requestFullscreen();
+      setFsWarningModal(null);
+    } catch {
+      toast.error('Please allow fullscreen to continue.');
+    }
+  };
+
+  const handleFsBan = () => {
+    intentionalExitRef.current = true; // Mark as intentional exit
+    if (document.fullscreenElement) document.exitFullscreen();
+    navigate(`/contests/${contestSlug}`);
+  };
+
+  const handleExitContest = () => {
+    intentionalExitRef.current = true; // Mark as intentional exit
+    if (document.fullscreenElement) document.exitFullscreen();
+    navigate(`/contests/${contestSlug}`);
+  };
+
   const contestProblem = contest?.problems?.find(
     p => p.problemId?.slug === problemSlug || p.problemId?._id?.toString() === problem?._id?.toString()
   );
@@ -334,10 +403,10 @@ export default function ContestProblemPage() {
       }`}>
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            <Link to={`/contests/${contestSlug}`}
+            <button onClick={handleExitContest}
               className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-white shrink-0 transition-colors px-2 py-1 rounded hover:bg-gray-800">
               <ArrowLeft size={14} /> Exit Contest
-            </Link>
+            </button>
             <span className="text-gray-700">|</span>
             <span className="text-sm font-semibold text-white truncate">{contest?.title}</span>
             {contestProblem && (
@@ -727,6 +796,71 @@ export default function ContestProblemPage() {
           </div>
         </div>
       </div>
+
+      {/* ── Fullscreen Warning Modal ── */}
+      {fsWarningModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center px-4">
+          <div className="bg-gray-900 border border-gray-700 rounded-2xl p-7 w-full max-w-md shadow-2xl">
+
+            {fsWarningModal === 'banned' ? (
+              <>
+                <div className="flex items-center justify-center w-14 h-14 rounded-full bg-red-500/10 border border-red-500/30 mx-auto mb-4">
+                  <Lock size={26} className="text-red-400" />
+                </div>
+                <h2 className="text-xl font-bold text-center text-white mb-2">Access Revoked</h2>
+                <p className="text-sm text-gray-400 text-center mb-6">
+                  You exited fullscreen <span className="text-red-400 font-semibold">3 times</span>. You are no longer allowed to participate in this contest.
+                </p>
+                <button
+                  onClick={handleFsBan}
+                  className="w-full py-2.5 rounded-xl bg-gray-800 text-gray-300 hover:bg-gray-700 text-sm font-medium transition-colors">
+                  Exit Contest
+                </button>
+              </>
+            ) : (
+              <>
+                <div className={`flex items-center justify-center w-14 h-14 rounded-full mx-auto mb-4 ${
+                  fsWarningModal === 'warn1'
+                    ? 'bg-orange-500/10 border border-orange-500/30'
+                    : 'bg-red-500/10 border border-red-500/30'
+                }`}>
+                  <AlertCircle size={26} className={fsWarningModal === 'warn1' ? 'text-orange-400' : 'text-red-400'} />
+                </div>
+
+                <h2 className="text-xl font-bold text-center text-white mb-2">
+                  {fsWarningModal === 'warn1' && '⚠️ Warning 1 of 2'}
+                  {fsWarningModal === 'warn2' && '⚠️ Warning 2 of 2 — Final Warning'}
+                </h2>
+
+                <p className="text-sm text-gray-400 text-center mb-1">
+                  {fsWarningModal === 'warn1' && 'You exited fullscreen. This is your first warning. Fullscreen has been automatically restored.'}
+                  {fsWarningModal === 'warn2' && 'You exited fullscreen again. This is your FINAL warning. One more exit will permanently ban you from this contest. Fullscreen has been automatically restored.'}
+                </p>
+
+                <p className="text-xs text-center text-red-400 mb-4">
+                  Violations: {parseInt(localStorage.getItem(VIOLATION_KEY) || '0', 10)} / 3
+                </p>
+
+                <div className="flex gap-3 mt-5">
+                  <button
+                    onClick={handleFsBan}
+                    className="flex-1 py-2.5 rounded-xl bg-gray-800 text-gray-300 hover:bg-gray-700 text-sm font-medium transition-colors">
+                    Exit Contest
+                  </button>
+                  <button
+                    onClick={() => setFsWarningModal(null)}
+                    className={`flex-1 py-2.5 rounded-xl text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
+                      fsWarningModal === 'warn1' ? 'bg-orange-600 hover:bg-orange-700' : 'bg-red-600 hover:bg-red-700'
+                    }`}>
+                    <CheckCircle2 size={14} />
+                    Continue Contest
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { io } from 'socket.io-client';
 import {
   CheckCircle2, Clock, Users, Trophy, Loader2, AlertCircle,
-  Zap, Code2, BarChart2, Lock, Play, ChevronRight
+  Zap, Code2, BarChart2, Lock, Play, ChevronRight, Maximize2
 } from 'lucide-react';
 import { getContest, registerForContest, getContestLeaderboard, getMyContestSubmissions } from '../api/contestApi';
 import useAuthStore from '../store/authStore';
@@ -133,15 +133,23 @@ function LiveLeaderboard({ slug, problems = [], isLive, currentUserId }) {
 }
 
 // ─── Problem Card ─────────────────────────────────────────────────────────────
-function ProblemCard({ p, slug, mySubmissions = [], isLive }) {
+function ProblemCard({ p, slug, mySubmissions = [], isLive, onEnter }) {
   const pid = p.problemId?._id?.toString();
   const mySubs = mySubmissions.filter(s => s.problemId?.toString() === pid || s.problemId?._id?.toString() === pid);
   const accepted = mySubs.find(s => s.status === 'accepted');
   const attempted = mySubs.length > 0;
 
+  const handleClick = (e) => {
+    if (isLive && onEnter) {
+      e.preventDefault();
+      onEnter(p.problemId?.slug);
+    }
+  };
+
   return (
     <Link
       to={isLive ? `/contests/${slug}/problems/${p.problemId?.slug}` : `/problems/${p.problemId?.slug}`}
+      onClick={handleClick}
       className={`relative bg-gray-900 border rounded-xl p-5 transition-all hover:shadow-lg group ${
         accepted ? 'border-green-500/40 hover:border-green-500/60'
         : attempted ? 'border-yellow-500/30 hover:border-yellow-500/50'
@@ -186,10 +194,22 @@ function ProblemCard({ p, slug, mySubmissions = [], isLive }) {
 export default function ContestDetailPage() {
   const { slug } = useParams();
   const { user, token, isAuthenticated } = useAuthStore();
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const [tab, setTab] = useState('problems');
   const socketRef = useRef(null);
   const [liveCount, setLiveCount] = useState(0);
+
+  // ── Fullscreen enforcement state ──
+  const [fsModal, setFsModal] = useState(null); // null | 'request' | 'warn1' | 'warn2' | 'banned'
+  const [pendingProblemSlug, setPendingProblemSlug] = useState(null);
+  const VIOLATION_KEY = `fs_violations_${slug}`;
+  const getViolations = () => parseInt(localStorage.getItem(VIOLATION_KEY) || '0', 10);
+  const addViolation = () => {
+    const v = getViolations() + 1;
+    localStorage.setItem(VIOLATION_KEY, v);
+    return v;
+  };
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['contest', slug],
@@ -247,7 +267,6 @@ export default function ContestDetailPage() {
   const { mutate: doRegister, isLoading: registering } = useMutation({
     mutationFn: () => registerForContest(contest._id),
     onSuccess: () => {
-      // Cache endTime for instant timer on problem page
       if (contest?.endTime) {
         localStorage.setItem(`contest_end_${slug}`, contest.endTime);
       }
@@ -256,6 +275,35 @@ export default function ContestDetailPage() {
     },
     onError: e => toast.error(e.response?.data?.error || e.message)
   });
+
+  // ── Fullscreen enter handler ──
+  const handleEnterProblem = (problemSlug) => {
+    const violations = getViolations();
+    if (violations >= 3) {
+      setFsModal('banned');
+      return;
+    }
+    setPendingProblemSlug(problemSlug);
+    setFsModal('request');
+  };
+
+  const enterFullscreenAndNavigate = async (problemSlug) => {
+    try {
+      await document.documentElement.requestFullscreen();
+      setFsModal(null);
+      navigate(`/contests/${slug}/problems/${problemSlug}`);
+    } catch {
+      toast.error('Fullscreen is required to enter the contest.');
+    }
+  };
+
+  const handleFsModalAction = async () => {
+    if (fsModal === 'request') {
+      await enterFullscreenAndNavigate(pendingProblemSlug);
+    } else if (fsModal === 'warn1' || fsModal === 'warn2') {
+      await enterFullscreenAndNavigate(pendingProblemSlug);
+    }
+  };
 
   if (isLoading) return (
     <div className="min-h-screen bg-gray-950 flex items-center justify-center">
@@ -458,6 +506,7 @@ export default function ContestDetailPage() {
                   slug={slug}
                   mySubmissions={mySubmissions}
                   isLive={true}
+                  onEnter={handleEnterProblem}
                 />
               ))}
             </div>
@@ -485,6 +534,125 @@ export default function ContestDetailPage() {
           </div>
         )}
       </div>
+
+      {/* ── Fullscreen Modal ── */}
+      {fsModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center px-4">
+          <div className="bg-gray-900 border border-gray-700 rounded-2xl p-7 w-full max-w-md shadow-2xl">
+
+            {fsModal === 'banned' ? (
+              <>
+                <div className="flex items-center justify-center w-14 h-14 rounded-full bg-red-500/10 border border-red-500/30 mx-auto mb-4">
+                  <Lock size={26} className="text-red-400" />
+                </div>
+                <h2 className="text-xl font-bold text-center text-white mb-2">Access Revoked</h2>
+                <p className="text-sm text-gray-400 text-center mb-6">
+                  You exited fullscreen <span className="text-red-400 font-semibold">3 times</span>. You are no longer allowed to participate in this contest.
+                </p>
+                <button
+                  onClick={() => setFsModal(null)}
+                  className="w-full py-2.5 rounded-xl bg-gray-800 text-gray-300 hover:bg-gray-700 text-sm font-medium transition-colors">
+                  Close
+                </button>
+              </>
+            ) : fsModal === 'request' ? (
+              <>
+                <div className="flex items-center justify-center w-14 h-14 rounded-full bg-blue-500/10 border border-blue-500/30 mx-auto mb-4">
+                  <Maximize2 size={26} className="text-blue-400" />
+                </div>
+
+                <h2 className="text-xl font-bold text-center text-white mb-3">Contest Rules & Requirements</h2>
+
+                <div className="bg-gray-800/50 rounded-lg p-4 mb-4 text-left">
+                  <h3 className="text-sm font-semibold text-blue-400 mb-2 flex items-center gap-2">
+                    <AlertCircle size={14} /> Important Instructions
+                  </h3>
+                  <ul className="text-xs text-gray-300 space-y-2">
+                    <li className="flex items-start gap-2">
+                      <span className="text-blue-400 shrink-0">•</span>
+                      <span><strong className="text-white">Fullscreen Mode:</strong> You must stay in fullscreen throughout the contest</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-orange-400 shrink-0">•</span>
+                      <span><strong className="text-white">3 Strike Policy:</strong> Exiting fullscreen 3 times will ban you from the contest</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-yellow-400 shrink-0">•</span>
+                      <span><strong className="text-white">No Copy/Paste:</strong> Copy-paste is disabled during the contest</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-green-400 shrink-0">•</span>
+                      <span><strong className="text-white">Fair Play:</strong> Write your own code and follow contest rules</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="bg-yellow-400/10 border border-yellow-400/30 rounded-lg p-3 mb-4">
+                  <p className="text-xs text-yellow-400 text-center">
+                    ⚠️ Press <kbd className="px-1.5 py-0.5 bg-gray-800 rounded text-white font-mono">ESC</kbd> or <kbd className="px-1.5 py-0.5 bg-gray-800 rounded text-white font-mono">F11</kbd> to exit fullscreen will count as a violation
+                  </p>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => { setFsModal(null); setPendingProblemSlug(null); }}
+                    className="flex-1 py-2.5 rounded-xl bg-gray-800 text-gray-300 hover:bg-gray-700 text-sm font-medium transition-colors">
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleFsModalAction}
+                    className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+                    <Maximize2 size={14} />
+                    I Understand, Enter Contest
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className={`flex items-center justify-center w-14 h-14 rounded-full mx-auto mb-4 ${
+                  fsModal === 'warn1'
+                    ? 'bg-orange-500/10 border border-orange-500/30'
+                    : 'bg-red-500/10 border border-red-500/30'
+                }`}>
+                  <AlertCircle size={26} className={fsModal === 'warn1' ? 'text-orange-400' : 'text-red-400'} />
+                </div>
+
+                <h2 className="text-xl font-bold text-center text-white mb-2">
+                  {fsModal === 'warn1' && '⚠️ Warning 1 of 2'}
+                  {fsModal === 'warn2' && '⚠️ Warning 2 of 2 — Final Warning'}
+                </h2>
+
+                <p className="text-sm text-gray-400 text-center mb-1">
+                  {fsModal === 'warn1' && 'You exited fullscreen. This is your first warning. One more exit will result in a final warning.'}
+                  {fsModal === 'warn2' && 'You exited fullscreen again. This is your FINAL warning. The next exit will permanently ban you from this contest.'}
+                </p>
+
+                {fsModal !== 'request' && (
+                  <p className="text-xs text-center text-red-400 mb-4">
+                    Violations: {getViolations()} / 3
+                  </p>
+                )}
+
+                <div className="flex gap-3 mt-5">
+                  <button
+                    onClick={() => { setFsModal(null); setPendingProblemSlug(null); }}
+                    className="flex-1 py-2.5 rounded-xl bg-gray-800 text-gray-300 hover:bg-gray-700 text-sm font-medium transition-colors">
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleFsModalAction}
+                    className={`flex-1 py-2.5 rounded-xl text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
+                      fsModal === 'request' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-orange-600 hover:bg-orange-700'
+                    }`}>
+                    <Maximize2 size={14} />
+                    {fsModal === 'request' ? 'Enter Fullscreen' : 'Re-enter Fullscreen'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 
