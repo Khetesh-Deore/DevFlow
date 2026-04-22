@@ -5,6 +5,7 @@ import { Search, Trophy } from 'lucide-react';
 import { getGlobalLeaderboard } from '../api/userApi';
 import { LeaderboardSkeleton } from '../components/Common/LoadingSkeleton';
 import useAuthStore from '../store/authStore';
+import SEO from '../components/Common/SEO';
 
 const BRANCHES = ['CSE', 'IT', 'ECE', 'ME', 'CE', 'Other'];
 const BATCHES = ['2024-2028', '2023-2027', '2022-2026', '2021-2025', '2020-2024'];
@@ -41,6 +42,12 @@ export default function LeaderboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-950 text-white px-4 py-8">
+      <SEO 
+        title="Leaderboard - Top Competitive Programmers"
+        description="View the global leaderboard of top competitive programmers. See rankings, contest ratings, and problem-solving statistics."
+        keywords="programming leaderboard, competitive programming rankings, coding contest rankings, programmer rankings, coding leaderboard"
+        url="https://devflow26.vercel.app/leaderboard"
+      />
       <div className="max-w-7xl mx-auto">
 
         <div className="flex items-center gap-3 mb-6">

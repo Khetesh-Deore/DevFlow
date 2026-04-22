@@ -5,6 +5,7 @@ import { Users, Clock, Zap, Calendar, CheckCircle2, Loader2 } from 'lucide-react
 import { getContests, registerForContest } from '../api/contestApi';
 import useAuthStore from '../store/authStore';
 import toast from 'react-hot-toast';
+import SEO from '../components/Common/SEO';
 
 function useCountdown(targetDate) {
   const [diff, setDiff] = useState(Math.max(0, new Date(targetDate) - Date.now()));
@@ -155,6 +156,12 @@ export default function ContestsPage() {
 
   return (
     <div className="min-h-screen bg-gray-950 text-white px-4 py-8">
+      <SEO 
+        title="Programming Contests - Live Coding Competitions"
+        description="Join live programming contests and coding competitions. Compete with other programmers, solve challenging problems, and climb the leaderboard."
+        keywords="programming contests, coding competitions, live contests, competitive programming, coding challenges, programming tournaments"
+        url="https://devflow26.vercel.app/contests"
+      />
       <div className="max-w-5xl mx-auto">
         <h1 className="text-2xl font-bold mb-8">Contests</h1>
 

@@ -5,6 +5,7 @@ import { Search, CheckCircle2, MinusCircle, Filter, X } from 'lucide-react';
 import { getProblems, getTags } from '../api/problemApi';
 import { ProblemListSkeleton } from '../components/Common/LoadingSkeleton';
 import useAuthStore from '../store/authStore';
+import SEO from '../components/Common/SEO';
 
 const DIFFICULTIES = ['Easy', 'Medium', 'Hard'];
 
@@ -140,6 +141,12 @@ export default function ProblemsPage() {
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
+      <SEO 
+        title="Programming Problems - Practice Coding Challenges"
+        description="Solve hundreds of programming problems and coding challenges. Practice algorithms, data structures, and competitive programming with instant feedback."
+        keywords="programming problems, coding challenges, algorithms, data structures, competitive programming practice, coding exercises"
+        url="https://devflow26.vercel.app/problems"
+      />
       <div className="max-w-7xl mx-auto px-4 py-6">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">Problems</h1>

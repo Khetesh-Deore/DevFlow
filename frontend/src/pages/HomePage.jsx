@@ -1,9 +1,18 @@
 import { Link } from 'react-router-dom';
 import { Code2, Trophy, Users, Zap, CheckCircle, Lock, Timer, BarChart3, BookOpen, Shield } from 'lucide-react';
+import SEO from '../components/Common/SEO';
+import StructuredData from '../components/Common/StructuredData';
 
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-gray-950 text-white">
+      <SEO 
+        title="DevFlow - Master Competitive Programming"
+        description="Practice coding problems, compete in live contests, and track your progress. Built for college students who want to excel in competitive programming competitions."
+        keywords="competitive programming, coding contests, programming problems, algorithm practice, data structures, coding competitions, online judge, programming platform, college programming"
+        url="https://devflow26.vercel.app"
+      />
+      <StructuredData type="website" />
       
       {/* Hero Section */}
       <section className="relative overflow-hidden min-h-screen flex items-center">
