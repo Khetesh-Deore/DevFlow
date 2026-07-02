@@ -1,0 +1,3 @@
+curl -O https://raw.githubusercontent.com/Khetesh-Deore/DevFlow/main/setup.sh
+chmod +x setup.sh
+./setup.sh
