@@ -65,8 +65,8 @@ export default function AdminContestForm() {
         type: c.type || 'unrated',
         scoringType: c.scoringType || 'points',
         penaltyMinutes: c.penaltyMinutes || 20,
-        startTime: c.startTime ? c.startTime.slice(0, 16) : '',
-        endTime: c.endTime ? c.endTime.slice(0, 16) : '',
+        startTime: c.startTime ? toLocalDatetimeInput(new Date(c.startTime)) : '',
+        endTime: c.endTime ? toLocalDatetimeInput(new Date(c.endTime)) : '',
         registrationRequired: c.registrationRequired ?? true,
         rules: c.rules || '',
         isPublished: c.isPublished || false
@@ -132,6 +132,7 @@ export default function AdminContestForm() {
     if (!form.endTime) e.endTime = 'End time is required';
     if (form.startTime && form.endTime && new Date(form.endTime) <= new Date(form.startTime))
       e.endTime = 'End time must be after start time';
+    // Skip future-check on edit since past contests can be re-saved
     if (!isEdit && form.startTime && new Date(form.startTime) <= Date.now())
       e.startTime = 'Start time must be in the future';
     if (problems.length === 0) e.problems = 'Add at least one problem';
@@ -146,8 +147,9 @@ export default function AdminContestForm() {
     try {
       const payload = {
         ...form,
-        startTime: form.startTime,
-        endTime: form.endTime,
+        // datetime-local input gives local time string — convert to UTC ISO for backend
+        startTime: new Date(form.startTime).toISOString(),
+        endTime: new Date(form.endTime).toISOString(),
         isPublished: publish,
         problems: problems.map((p, i) => ({
           problemId: p.problemId,
