@@ -282,50 +282,7 @@ export default function AdminProblemForm() {
             </div>
           </div>
 
-          {/* Admin Solution */}
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-            <SectionTitle>Admin Solution</SectionTitle>
-            <p className="text-xs text-gray-500 mb-4">
-              This solution is used for reference only. Add test cases separately.
-            </p>
-            <div className="flex flex-col gap-3">
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Language</label>
-                <select value={form.adminSolution.language}
-                  onChange={e => setForm(f => ({ ...f, adminSolution: { ...f.adminSolution, language: e.target.value } }))}
-                  className={`${inputClass} w-40`}>
-                  {LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Solution Code</label>
-                <textarea rows={10} value={form.adminSolution.code}
-                  onChange={e => setForm(f => ({ ...f, adminSolution: { ...f.adminSolution, code: e.target.value } }))}
-                  placeholder="Paste your reference solution here..."
-                  className={textareaClass} />
-              </div>
-            </div>
-          </div>
-
-          {/* Hints */}
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-            <SectionTitle>Hints (optional)</SectionTitle>
-            <div className="flex flex-col gap-2">
-              {form.hints.map((hint, i) => (
-                <div key={i} className="flex gap-2">
-                  <input value={hint} onChange={e => setHint(i, e.target.value)}
-                    placeholder={`Hint ${i + 1}`} className={`${inputClass} flex-1`} />
-                  <button onClick={() => removeHint(i)} className="text-red-400 hover:text-red-300 px-2">
-                    <X size={16} />
-                  </button>
-                </div>
-              ))}
-              <button onClick={addHint}
-                className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 w-fit mt-1">
-                <Plus size={14} /> Add Hint
-              </button>
-            </div>
-          </div>
+         
 
           {/* Actions */}
           <div className="flex items-center gap-3 pb-8">

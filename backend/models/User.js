@@ -13,7 +13,7 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
     },
-    rollNumber: { type: String, required: true, unique: true, trim: true },
+    rollNumber: { type: String, required: true, trim: true },
     password: { type: String, required: true, minlength: 6, select: false },
     role: { type: String, enum: ['student', 'admin', 'superadmin'], default: 'student' },
     profilePic: { type: String, default: '' },
