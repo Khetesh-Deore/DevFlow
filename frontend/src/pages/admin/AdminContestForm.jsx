@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Plus, X, ChevronUp, ChevronDown, Search, Loader2 } from 'lucide-react';
+import { Plus, X, ChevronUp, ChevronDown, Search, Loader2, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/axiosConfig';
 import { createContest, updateContest } from '../../api/contestApi';
@@ -180,8 +180,23 @@ export default function AdminContestForm() {
   return (
     <div className="min-h-screen bg-gray-950 text-white px-4 py-6">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold mb-8">{isEdit ? 'Edit Contest' : 'Create Contest'}</h1>
+        <div className="flex items-center gap-3 mb-8">
+          <div className="flex items-center gap-3 mb-8">
+            <button
+              type="button"
+              onClick={() => navigate('/admin/contests')}
+              className="p-2 rounded-lg hover:bg-gray-800 transition-colors"
+              aria-label="Go Back"
+            >
+              <ArrowLeft size={22} />
+            </button>
 
+            <h1 className="text-2xl font-bold">
+              {isEdit ? 'Edit Contest' : 'Create Contest'}
+            </h1>
+          </div>
+
+        </div>
         <div className="flex flex-col gap-6">
 
           {/* Basic Info */}

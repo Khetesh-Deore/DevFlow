@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, X, Loader2 } from 'lucide-react';
+import { Plus, X, Loader2, ArrowLeft } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import api from '../../api/axiosConfig';
@@ -22,6 +22,10 @@ const INIT = {
   adminSolution: { language: 'python', code: '' },
   hints: [''],
   isPublished: false
+};
+
+const handleBack = () => {
+  navigate(-1); // Go to previous page
 };
 
 const inputClass = 'w-full bg-gray-800 text-white text-sm px-4 py-2.5 rounded-lg border border-gray-700 focus:outline-none focus:border-blue-500';
@@ -164,7 +168,24 @@ export default function AdminProblemForm() {
     <div className="min-h-screen bg-gray-950 text-white px-4 py-6">
       <div className="max-w-4xl mx-auto">
 
-        <h1 className="text-2xl font-bold mb-8">{isEdit ? 'Edit Problem' : 'Create Problem'}</h1>
+
+
+
+
+        <div className="flex items-center gap-3 mb-8">
+          <button
+            type="button"
+            onClick={() => navigate('/admin/problems')}
+            className="p-2 rounded-lg hover:bg-gray-800 transition-colors"
+            aria-label="Go back"
+          >
+            <ArrowLeft size={22} />
+          </button>
+
+          <h1 className="text-2xl font-bold">
+            {isEdit ? "Edit Problem" : "Create Problem"}
+          </h1>
+        </div>
 
         <div className="flex flex-col gap-8">
 
@@ -282,19 +303,19 @@ export default function AdminProblemForm() {
             </div>
           </div>
 
-         
+
 
           {/* Actions */}
           <div className="flex items-center gap-3 pb-8">
-            <button onClick={() => handleSave(false)} disabled={saving}
+            {/* <button onClick={() => handleSave(false)} disabled={saving}
               className="flex items-center gap-2 px-5 py-2.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-lg disabled:opacity-50 transition-colors">
               {saving && <Loader2 size={14} className="animate-spin" />}
               Save as Draft
-            </button>
+            </button> */}
             <button onClick={() => handleSave(true)} disabled={saving}
               className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg disabled:opacity-50 transition-colors">
               {saving && <Loader2 size={14} className="animate-spin" />}
-              Save & Publish
+              Save
             </button>
             <button onClick={() => navigate('/admin/problems')}
               className="px-5 py-2.5 text-sm text-gray-400 hover:text-white transition-colors">

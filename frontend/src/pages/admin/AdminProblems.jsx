@@ -93,10 +93,31 @@ export default function AdminProblems() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">Problems</h1>
-          <Link to="/admin/problems/new"
+
+ {/* Row 4 — Quick Actions */}
+        <div>
+          {/* <h2 className="text-sm font-semibold mb-3 text-gray-400">Quick Actions</h2> */}
+          <div className="flex flex-wrap gap-3">
+            {[
+              { label: 'New Problem', to: '/admin/problems/new', icon: <Plus size={14} />, color: 'bg-blue-600 hover:bg-blue-700' },
+              { label: 'New Contest', to: '/admin/contests/new', icon: <Plus size={14} />, color: 'bg-purple-600 hover:bg-purple-700' },
+              { label: 'View Users', to: '/admin/users', icon: <Eye size={14} />, color: 'bg-gray-700 hover:bg-gray-600' },
+              { label: 'All Problems', to: '/admin/problems', icon: <Eye size={14} />, color: 'bg-gray-700 hover:bg-gray-600' },
+              { label: 'All Contests', to: '/admin/contests', icon: <Eye size={14} />, color: 'bg-gray-700 hover:bg-gray-600' }
+            ].map(a => (
+              <Link key={a.to} to={a.to}
+                className={`flex items-center gap-2 ${a.color} text-white text-sm px-4 py-2.5 rounded-lg transition-colors`}>
+                {a.icon} {a.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+       <div  className="grid grid-cols-2 md:grid-cols-8 gap-8 mb-8"></div>
+
+          {/* <Link to="/admin/problems/new"
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2.5 rounded-lg transition-colors">
             <Plus size={16} /> Create Problem
-          </Link>
+          </Link> */}
         </div>
 
         {/* Stats */}

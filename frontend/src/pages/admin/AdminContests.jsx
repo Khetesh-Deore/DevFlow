@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Eye, EyeOff, Edit2, Trash2, Plus, Download, Loader2, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Eye, EyeOff, Edit2, Trash2, Plus, Download, Loader2, Clock, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
 import { deleteContest, toggleContestPublish, getContestReport } from '../../api/contestApi';
 import { generateContestPDF } from '../../utils/generateContestReport';
 import api from '../../api/axiosConfig';
@@ -18,15 +18,15 @@ const getTimeStatus = (c) => {
 
 const TIME_STATUS_STYLE = {
   upcoming: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
-  live:     'text-green-400 bg-green-400/10 border-green-400/20',
-  ended:    'text-gray-500 bg-gray-800 border-gray-700',
+  live: 'text-green-400 bg-green-400/10 border-green-400/20',
+  ended: 'text-gray-500 bg-gray-800 border-gray-700',
 };
 
 export default function AdminContests() {
   const qc = useQueryClient();
   const [generatingReport, setGeneratingReport] = useState(null);
   const [togglingId, setTogglingId] = useState(null);
-
+  const navigate = useNavigate();
   const handleDownloadReport = async (slug, title) => {
     setGeneratingReport(slug);
     try {
@@ -88,11 +88,28 @@ export default function AdminContests() {
     <div className="min-h-screen bg-gray-950 text-white px-4 py-6">
       <div className="max-w-5xl mx-auto">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Contests</h1>
-          <Link to="/admin/contests/new"
-            className="flex items-center gap-2 bg-blue-600 px-4 py-2 rounded-lg hover:bg-blue-700 text-sm">
-            <Plus size={14} /> New Contest
+
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigate('/admin')}
+              className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-800 hover:bg-gray-700 transition-all"
+              aria-label="Go Back"
+            >
+              <ArrowLeft size={20} />
+            </button>
+
+            <h1 className="text-2xl font-bold">Contests</h1>
+          </div>
+
+          <Link
+            to="/admin/contests/new"
+            className="flex items-center gap-2 bg-blue-600 px-4 py-2 rounded-lg hover:bg-blue-700 text-sm"
+          >
+            <Plus size={14} />
+            New Contest
           </Link>
+
         </div>
 
         {isLoading ? (
@@ -141,11 +158,10 @@ export default function AdminContests() {
                         <button
                           onClick={() => doToggle(c._id)}
                           disabled={isToggling}
-                          className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border transition-all ${
-                            c.isPublished
-                              ? 'text-green-400 bg-green-400/10 border-green-400/20 hover:bg-red-400/10 hover:text-red-400 hover:border-red-400/20'
-                              : 'text-gray-500 bg-gray-800 border-gray-700 hover:bg-green-400/10 hover:text-green-400 hover:border-green-400/20'
-                          } disabled:opacity-50 disabled:cursor-not-allowed`}
+                          className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border transition-all ${c.isPublished
+                            ? 'text-green-400 bg-green-400/10 border-green-400/20 hover:bg-red-400/10 hover:text-red-400 hover:border-red-400/20'
+                            : 'text-gray-500 bg-gray-800 border-gray-700 hover:bg-green-400/10 hover:text-green-400 hover:border-green-400/20'
+                            } disabled:opacity-50 disabled:cursor-not-allowed`}
                           title={c.isPublished ? 'Click to unpublish' : 'Click to publish'}
                         >
                           {isToggling ? (
