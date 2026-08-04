@@ -5,7 +5,18 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 8080,
-    host: true,          // expose on all network interfaces (0.0.0.0)
-    allowedHosts: 'all'  // allow any host including ngrok
+    host: true,
+    allowedHosts: 'all'
+  },
+  build: {
+    // Strip all console.* calls from production bundle
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
+        pure_funcs: ['console.log', 'console.warn', 'console.error', 'console.info', 'console.debug']
+      }
+    }
   }
 });
