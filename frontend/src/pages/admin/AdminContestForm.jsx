@@ -212,7 +212,7 @@ export default function AdminContestForm() {
                 <label className="block text-sm text-gray-400 mb-1">Description</label>
                 <textarea rows={3} value={form.description} onChange={set('description')} className={taClass} />
               </div>
-              <div className="grid grid-cols-2 gap-6">
+              {/* <div className="grid grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm text-gray-400 mb-2">Type</label>
                   <div className="flex flex-col gap-2">
@@ -245,7 +245,7 @@ export default function AdminContestForm() {
                     </div>
                   )}
                 </div>
-              </div>
+              </div> */}
             </div>
           </div>
 
@@ -344,7 +344,7 @@ export default function AdminContestForm() {
             )}
           </div>
 
-          {/* Settings */}
+          {/* Settings
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
             <SectionTitle>Settings</SectionTitle>
             <div className="flex flex-col gap-4">
@@ -360,7 +360,7 @@ export default function AdminContestForm() {
                   placeholder="Contest rules and guidelines..." className={taClass} />
               </div>
             </div>
-          </div>
+          </div> */}
 
           {/* Actions */}
           <div className="flex items-center gap-3 pb-8">
