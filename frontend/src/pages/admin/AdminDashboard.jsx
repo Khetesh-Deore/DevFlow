@@ -65,6 +65,26 @@ export default function AdminDashboard() {
 
         <h1 className="text-2xl font-bold mb-6">Admin Dashboard</h1>
 
+          {/* Row 4 — Quick Actions */}
+        <div>
+          <h2 className="text-sm font-semibold mb-3 text-gray-400">Quick Actions</h2>
+          <div className="flex flex-wrap gap-3">
+            {[
+              { label: 'New Problem', to: '/admin/problems/new', icon: <Plus size={14} />, color: 'bg-blue-600 hover:bg-blue-700' },
+              { label: 'New Contest', to: '/admin/contests/new', icon: <Plus size={14} />, color: 'bg-purple-600 hover:bg-purple-700' },
+              { label: 'View Users', to: '/admin/users', icon: <Eye size={14} />, color: 'bg-gray-700 hover:bg-gray-600' },
+              { label: 'All Problems', to: '/admin/problems', icon: <Eye size={14} />, color: 'bg-gray-700 hover:bg-gray-600' },
+              { label: 'All Contests', to: '/admin/contests', icon: <Eye size={14} />, color: 'bg-gray-700 hover:bg-gray-600' }
+            ].map(a => (
+              <Link key={a.to} to={a.to}
+                className={`flex items-center gap-2 ${a.color} text-white text-sm px-4 py-2.5 rounded-lg transition-colors`}>
+                {a.icon} {a.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+       <div  className="grid grid-cols-2 md:grid-cols-8 gap-8 mb-8"></div>
+       
         {/* Row 1 — Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <StatCard icon={<Users size={18} />} label="Total Students"
@@ -200,24 +220,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Row 4 — Quick Actions */}
-        <div>
-          <h2 className="text-sm font-semibold mb-3 text-gray-400">Quick Actions</h2>
-          <div className="flex flex-wrap gap-3">
-            {[
-              { label: 'New Problem', to: '/admin/problems/new', icon: <Plus size={14} />, color: 'bg-blue-600 hover:bg-blue-700' },
-              { label: 'New Contest', to: '/admin/contests/new', icon: <Plus size={14} />, color: 'bg-purple-600 hover:bg-purple-700' },
-              { label: 'View Users', to: '/admin/users', icon: <Eye size={14} />, color: 'bg-gray-700 hover:bg-gray-600' },
-              { label: 'All Problems', to: '/admin/problems', icon: <Eye size={14} />, color: 'bg-gray-700 hover:bg-gray-600' },
-              { label: 'All Contests', to: '/admin/contests', icon: <Eye size={14} />, color: 'bg-gray-700 hover:bg-gray-600' }
-            ].map(a => (
-              <Link key={a.to} to={a.to}
-                className={`flex items-center gap-2 ${a.color} text-white text-sm px-4 py-2.5 rounded-lg transition-colors`}>
-                {a.icon} {a.label}
-              </Link>
-            ))}
-          </div>
-        </div>
+      
 
       </div>
     </div>
