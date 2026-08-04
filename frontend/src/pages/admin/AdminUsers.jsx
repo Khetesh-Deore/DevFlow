@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link ,useNavigate} from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, X, ExternalLink, ShieldCheck, Download } from 'lucide-react';
+import { Search, X, ExternalLink, ShieldCheck, Download, ArrowLeft } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
 import api from '../../api/axiosConfig';
@@ -18,6 +18,7 @@ const ROLE_STYLES = {
 
 function RoleModal({ user, onClose, onConfirm }) {
   const [role, setRole] = useState(user.role === 'admin' ? 'student' : 'admin');
+
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-4">
       <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-sm">
@@ -43,7 +44,7 @@ export default function AdminUsers() {
   const { user: currentUser } = useAuthStore();
   const qc = useQueryClient();
   const isSuperAdmin = currentUser?.role === 'superadmin';
-
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [batch, setBatch] = useState('');
   const [branch, setBranch] = useState('');
@@ -97,8 +98,24 @@ export default function AdminUsers() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold">Users</h1>
-            <p className="text-sm text-gray-500 mt-0.5">{total} total users</p>
+
+            <div className="flex items-center gap-3 mb-8">
+              <button
+                type="button"
+                onClick={() => navigate('/admin')}
+                className="p-2 rounded-lg hover:bg-gray-800 transition-colors"
+                aria-label="Go Back"
+              >
+                <ArrowLeft size={22} />
+              </button>
+
+              <h1 className="text-2xl font-bold">Users</h1>
+              <p className="text-sm text-gray-500 mt-0.5">{total} total users</p>
+            </div>
+
+
+
+
           </div>
           <button onClick={handleExport}
             className="flex items-center gap-2 text-sm bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors">
