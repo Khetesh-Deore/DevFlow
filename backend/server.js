@@ -24,32 +24,7 @@ const app = express();
 
 app.use(helmet());
 app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-    const allowed = [
-      process.env.CLIENT_URL,
-      'http://localhost:5173',
-      'http://localhost:8080',
-      'http://10.10.0.36:5173',
-      'http://10.10.0.36:8080',
-      'https://devflow26.vercel.app',
-      'https://devflow-frontend-new-1063807782201.europe-west1.run.app',
-      'https://devflow-frontend-1063807782201.asia-south1.run.app',
-      'https://devflow26-1063807782201.asia-south1.run.app'
-    ];
-    if (
-      allowed.includes(origin) ||
-      origin.includes('ngrok') ||
-      origin.includes('ngrok-free') ||
-      origin.includes('vercel.app') ||
-      origin.includes('run.app') ||
-      /^http:\/\/192\.168\.\d+\.\d+(:\d+)?$/.test(origin) ||
-      /^http:\/\/10\.\d+\.\d+\.\d+(:\d+)?$/.test(origin)
-    ) {
-      return callback(null, true);
-    }
-    callback(new Error('Not allowed by CORS'));
-  },
+  origin: true,
   credentials: true
 }));
 app.use(express.json());
@@ -70,13 +45,7 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: [
-      process.env.CLIENT_URL,
-      'http://localhost:8080',
-      'http://10.10.0.36:8080',
-      'https://devflow26.vercel.app',
-      'https://devflow-frontend-new-1063807782201.europe-west1.run.app'
-    ],
+    origin: true,
     methods: ['GET', 'POST']
   }
 });

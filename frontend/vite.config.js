@@ -9,11 +9,10 @@ export default defineConfig({
     allowedHosts: 'all'
   },
   build: {
-    // Strip all console.* calls from production bundle
     minify: 'terser',
     terserOptions: {
       compress: {
-        drop_console: true,
+        drop_console: false,   // don't drop — we override manually in main.jsx
         drop_debugger: true,
         pure_funcs: ['console.log', 'console.warn', 'console.error', 'console.info', 'console.debug']
       }
