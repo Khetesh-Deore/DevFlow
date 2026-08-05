@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Search, Trophy } from 'lucide-react';
+import { Search, Trophy, ArrowLeft } from 'lucide-react';
 import { getGlobalLeaderboard } from '../api/userApi';
 import { LeaderboardSkeleton } from '../components/Common/LoadingSkeleton';
 import useAuthStore from '../store/authStore';
@@ -18,6 +18,7 @@ const RANK_STYLES = {
 
 export default function LeaderboardPage() {
   const { user: currentUser } = useAuthStore();
+  const navigate = useNavigate();
   const [batch, setBatch] = useState('');
   const [branch, setBranch] = useState('');
   const [search, setSearch] = useState('');
@@ -51,6 +52,13 @@ export default function LeaderboardPage() {
       <div className="max-w-7xl mx-auto">
 
         <div className="flex items-center gap-3 mb-6">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center justify-center w-9 h-9 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors"
+            title="Go back"
+          >
+            <ArrowLeft size={18} />
+          </button>
           <Trophy className="text-yellow-400" size={24} />
           <h1 className="text-2xl font-bold">College Leaderboard</h1>
         </div>

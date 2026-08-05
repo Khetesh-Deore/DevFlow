@@ -9,7 +9,7 @@ import SubmissionHeatmap from '../components/Profile/SubmissionHeatmap';
 import toast from 'react-hot-toast';
 import {
   Loader2, Trophy, Code2, Clock, Target, Zap,
-  Calendar, Edit2, Check, X, User, BookOpen, Award
+  Calendar, Edit2, Check, X, User, BookOpen, Award, ArrowLeft
 } from 'lucide-react';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -174,6 +174,8 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState('activity');
   const [showEdit, setShowEdit] = useState(false);
 
+  const navigate = useNavigate();
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ['profile', username],
     queryFn: () => getUserProfile(username),
@@ -241,6 +243,13 @@ export default function ProfilePage() {
       {/* ── Header Banner ── */}
       <div className="bg-gradient-to-r from-gray-900 via-gray-900 to-gray-950 border-b border-gray-800">
         <div className="max-w-6xl mx-auto px-4 py-8">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center justify-center w-9 h-9 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors mb-5"
+            title="Go back"
+          >
+            <ArrowLeft size={18} />
+          </button>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
 
             {/* Avatar */}
