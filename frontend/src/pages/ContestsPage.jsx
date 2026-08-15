@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Users, Clock, Zap, Calendar, CheckCircle2, Loader2 } from 'lucide-react';
+import { Users, Clock, Zap, Calendar, CheckCircle2, Loader2,ArrowLeft } from 'lucide-react';
 import { getContests, registerForContest } from '../api/contestApi';
 import useAuthStore from '../store/authStore';
 import toast from 'react-hot-toast';
@@ -148,6 +148,7 @@ export default function ContestsPage() {
     queryFn: () => getContests(),
     refetchInterval: 30000
   });
+const navigate = useNavigate();
 
   const contests = data?.data || [];
   const live = contests.filter(c => c.status === 'live');
@@ -163,6 +164,9 @@ export default function ContestsPage() {
         url="https://devflow26.vercel.app/contests"
       />
       <div className="max-w-5xl mx-auto">
+        <button onClick={() => navigate(-1)} className="flex items-center justify-center w-9 h-9 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors mb-5" title="Go back">
+          <ArrowLeft size={18} />
+        </button>
         <h1 className="text-2xl font-bold mb-8">Contests</h1>
 
         {isLoading ? (

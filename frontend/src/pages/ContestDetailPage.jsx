@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { io } from 'socket.io-client';
 import {
   CheckCircle2, Clock, Users, Trophy, Loader2, AlertCircle,
-  Zap, Code2, BarChart2, Lock, Play, ChevronRight, Maximize2
+  Zap, Code2, BarChart2, Lock, Play, ChevronRight, Maximize2, ArrowLeft
 } from 'lucide-react';
 import { getContest, registerForContest, getContestLeaderboard, getMyContestSubmissions } from '../api/contestApi';
 import useAuthStore from '../store/authStore';
@@ -333,6 +333,9 @@ export default function ContestDetailPage() {
   if (status === 'upcoming') return (
     <div className="min-h-screen bg-gray-950 text-white px-4 py-8">
       <div className="max-w-3xl mx-auto">
+        <button onClick={() => navigate(-1)} className="flex items-center justify-center w-9 h-9 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors mb-5" title="Go back">
+          <ArrowLeft size={18} />
+        </button>
         <div className="flex items-center gap-2 mb-3">
           <span className="text-xs bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2.5 py-0.5 rounded-full capitalize">{contest.type}</span>
           <span className="text-xs bg-gray-800 text-gray-400 px-2.5 py-0.5 rounded-full">{contest.scoringType === 'icpc' ? 'ICPC Scoring' : 'Points Scoring'}</span>
@@ -425,6 +428,9 @@ export default function ContestDetailPage() {
       }`}>
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
+            <button onClick={() => navigate('/contests')} className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors shrink-0" title="Back to Contests">
+              <ArrowLeft size={16} />
+            </button>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
               <span className="text-xs text-green-400 font-medium">LIVE</span>
@@ -666,6 +672,9 @@ export default function ContestDetailPage() {
   return (
     <div className="min-h-screen bg-gray-950 text-white px-4 py-8">
       <div className="max-w-5xl mx-auto">
+        <button onClick={() => navigate(-1)} className="flex items-center justify-center w-9 h-9 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors mb-5" title="Go back">
+          <ArrowLeft size={18} />
+        </button>
 
         {/* Header */}
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
