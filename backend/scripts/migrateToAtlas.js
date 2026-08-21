@@ -56,8 +56,8 @@ async function migrate() {
       }
 
       // Clear Atlas collection to avoid duplicate key errors
-      const deleted = await atlasCol.deleteMany({});
-      console.log(`   🗑️  Cleared ${deleted.deletedCount} existing Atlas documents`);
+    //   const deleted = await atlasCol.deleteMany({});
+    //   console.log(`   🗑️  Cleared ${deleted.deletedCount} existing Atlas documents`);
 
       // Insert all local documents
       const result = await atlasCol.insertMany(documents);
