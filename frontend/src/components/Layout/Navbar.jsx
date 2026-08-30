@@ -8,7 +8,8 @@ import Logo from './Logo';
 const NAV_LINKS = [
   { label: 'Problems', to: '/problems' },
   { label: 'Contests', to: '/contests' },
-  { label: 'Leaderboard', to: '/leaderboard' }
+  { label: 'Leaderboard', to: '/leaderboard' },
+  { label: 'Companies', to: '/company-problems' },
 ];
 
 export default function Navbar() {
