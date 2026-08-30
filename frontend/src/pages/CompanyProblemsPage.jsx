@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { Search, Building2, ArrowLeft, ExternalLink, ChevronRight, Loader2, X } from 'lucide-react';
 
@@ -69,7 +69,8 @@ function CompanyCard({ name, onClick }) {
   ];
   const color = colors[name.charCodeAt(0) % colors.length];
   return (
-    <button
+    <Link
+      to={`/company-problems/${encodeURIComponent(name)}`}
       onClick={onClick}
       className="group flex items-center gap-3 bg-gray-900 border border-gray-800 hover:border-blue-500/50 rounded-xl p-4 transition-all hover:bg-gray-800/50 text-left w-full"
     >
@@ -78,7 +79,7 @@ function CompanyCard({ name, onClick }) {
       </div>
       <span className="text-sm font-medium text-gray-200 group-hover:text-white truncate flex-1">{name}</span>
       <ChevronRight size={14} className="text-gray-600 group-hover:text-blue-400 shrink-0 transition-colors" />
-    </button>
+    </Link>
   );
 }
 
@@ -192,14 +193,23 @@ function ProblemTable({ problems, isLoading }) {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function CompanyProblemsPage() {
   const navigate = useNavigate();
+  const { company: urlCompany } = useParams();   // from /company-problems/:company
   const [companies, setCompanies] = useState([]);
   const [loadingCompanies, setLoadingCompanies] = useState(true);
   const [search, setSearch] = useState('');
 
-  const [selectedCompany, setSelectedCompany] = useState(null);
+  // selectedCompany comes from URL param OR state click
+  const [selectedCompany, setSelectedCompany] = useState(
+    urlCompany ? decodeURIComponent(urlCompany) : null
+  );
   const [timeframe, setTimeframe] = useState('5');
   const [problems, setProblems] = useState([]);
   const [loadingProblems, setLoadingProblems] = useState(false);
+
+  // Sync URL param → state when navigating directly to /company-problems/Google
+  useEffect(() => {
+    if (urlCompany) setSelectedCompany(decodeURIComponent(urlCompany));
+  }, [urlCompany]);
 
   useEffect(() => {
     fetch(GITHUB_API)
@@ -265,7 +275,7 @@ export default function CompanyProblemsPage() {
         <div className="min-h-screen bg-gray-950 text-white px-4 py-6">
           <div className="max-w-7xl mx-auto">
             <div className="flex items-center gap-3 mb-6">
-              <button onClick={() => { setSelectedCompany(null); setProblems([]); }}
+              <button onClick={() => { setSelectedCompany(null); setProblems([]); navigate('/company-problems'); }}
                 className="flex items-center justify-center w-9 h-9 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors shrink-0"
                 title="Back to companies">
                 <ArrowLeft size={18} />

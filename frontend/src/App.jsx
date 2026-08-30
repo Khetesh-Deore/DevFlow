@@ -84,6 +84,7 @@ function AppContent() {
           <Route path="/leaderboard" element={<LeaderboardPage />} />
           <Route path="/profile/:username" element={<ProfilePage />} />
           <Route path="/company-problems" element={<CompanyProblemsPage />} />
+          <Route path="/company-problems/:company" element={<CompanyProblemsPage />} />
 
           {/* Protected - require login */}
           <Route element={<ProtectedRoute />}>
