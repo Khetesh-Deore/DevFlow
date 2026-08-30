@@ -25,6 +25,12 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://devflow26.vercel.app/company-problems</loc>
+    <lastmod>2026-08-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.95</priority>
+  </url>
+  <url>
     <loc>https://devflow26.vercel.app/login</loc>
     <lastmod>2026-04-22</lastmod>
     <changefreq>monthly</changefreq>
