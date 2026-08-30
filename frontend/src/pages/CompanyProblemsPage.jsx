@@ -465,22 +465,11 @@ export default function CompanyProblemsPage() {
             </div>
           </div>
 
-          {/* SEO-rich description — visible to users AND crawlers */}
-          <div className="ml-12 mb-6">
-            <p className="text-gray-400 text-sm leading-relaxed max-w-3xl">
-              Browse <strong className="text-gray-300">company-wise DSA questions</strong> asked by{' '}
-              <strong className="text-gray-300">Google, Amazon, Microsoft, Meta, Adobe</strong> and 100+ top tech companies.
-              Filter by frequency and time period — <em>30 days, 3 months, 6 months, or all time</em> — to focus on the most relevant problems for your interview prep.
-              Free, open-source, updated regularly. Data sourced from{' '}
-              <a href="https://github.com/liquidslr/leetcode-company-wise-problems" target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-400 hover:underline inline-flex items-center gap-1">
-                liquidslr/leetcode-company-wise-problems <ExternalLink size={11} />
-              </a>.
-            </p>
+          {/* SEO-rich description — kept in meta tags only, not shown to users */}
 
-            {/* Quick-access company chips */}
-            <div className="flex flex-wrap gap-2 mt-3">
+          {/* Quick-access company chips */}
+          <div className="ml-12 mb-6">
+            <div className="flex flex-wrap gap-2">
               {HOT_COMPANIES.map(c => (
                 <button key={c} onClick={() => setSearch(c)}
                   className="text-xs bg-gray-800 hover:bg-blue-600/20 border border-gray-700 hover:border-blue-500/50 text-gray-400 hover:text-blue-400 px-3 py-1 rounded-full transition-colors">
