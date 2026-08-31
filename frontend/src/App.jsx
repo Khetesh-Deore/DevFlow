@@ -7,6 +7,7 @@ import useAuthStore from './store/authStore';
 import queryClient from './api/queryClient';
 
 import Navbar from './components/Layout/Navbar';
+import Footer from './components/Layout/Footer';
 import { ProtectedRoute, AdminRoute } from './components/Layout/ProtectedRoute';
 
 // Public pages
@@ -61,7 +62,7 @@ function AppContent() {
       .catch(() => { logout(); setLoading(false); });
   }, []);
 
-  // Hide navbar for contest problem pages
+  // Hide navbar/footer for contest problem pages (full-screen editor)
   const hideNavbar = location.pathname.match(/^\/contests\/[^/]+\/problems\/[^/]+$/);
 
   return (
@@ -110,7 +111,8 @@ function AppContent() {
           <Route path="*" element={<NotFound />} />
 
         </Routes>
-      </>
+      {!hideNavbar && <Footer />}
+    </>
     );
 }
 

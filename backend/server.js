@@ -19,6 +19,7 @@ const problemRoutes = require('./routes/problems');
 const submissionRoutes = require('./routes/submissions');
 const contestRoutes = require('./routes/contests');
 const adminRoutes = require('./routes/admin');
+const statsRoutes = require('./routes/stats');
 
 const app = express();
 
@@ -38,6 +39,7 @@ app.use('/api/v1/problems', dbCheck, problemRoutes);
 app.use('/api/v1/submissions', dbCheck, submissionRoutes);
 app.use('/api/v1/contests', dbCheck, contestRoutes);
 app.use('/api/v1/admin', dbCheck, adminRoutes);
+app.use('/api/v1/stats', dbCheck, statsRoutes);
 
 app.use(errorHandler);
 

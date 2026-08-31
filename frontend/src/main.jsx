@@ -26,7 +26,7 @@ console.assert         = _noop;
 // ── Signature — survives terser because called via saved ref ─
 setTimeout(function () {
   _origClear();
-  _origLog('Built with love by Khetesh Deore');
+  _origLog('Built with love by Khetesh Deore ()');
 }, 200);
 
 const queryClient = new QueryClient({
