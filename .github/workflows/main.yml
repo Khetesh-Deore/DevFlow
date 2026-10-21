@@ -1,0 +1,45 @@
+name: Keep Render Services Alive
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'   # every 5 min (GitHub's minimum allowed interval)
+  workflow_dispatch:         # manual run button in the Actions tab
+
+jobs:
+  keep-alive:
+    name: Ping Render Services
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Ping services
+        run: |
+          URLS=(
+            "https://devflow-nolh.onrender.com/api/v1/stats/visitors"
+            "https://devflow-judge.onrender.com/health"
+          )
+
+          FAILED=0
+          for URL in "${URLS[@]}"; do
+            echo "→ Pinging $URL"
+            OK=0
+            # Up to 3 attempts: a cold start can take 30-60s to wake up
+            for ATTEMPT in 1 2 3; do
+              HTTP=$(curl -s -o /dev/null -w "%{http_code}" --max-time 60 "$URL" || echo "000")
+              echo "   Attempt $ATTEMPT: HTTP $HTTP"
+              if [ "$HTTP" -ge 200 ] && [ "$HTTP" -lt 400 ]; then
+                OK=1
+                break
+              fi
+              sleep 10
+            done
+            if [ "$OK" -eq 1 ]; then
+              echo "   ✅ Warm"
+            else
+              echo "   ❌ Failed after 3 attempts"
+              FAILED=1
+            fi
+          done
+
+          echo "Ping cycle finished at $(date -u '+%Y-%m-%d %H:%M UTC')"
+          exit $FAILED
